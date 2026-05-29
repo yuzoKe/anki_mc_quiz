@@ -456,78 +456,79 @@ def parse_questions(text: str) -> list:
     """
     Parses NotebookLM quiz text into a list of question dicts.
 
-    Handles both formats that NotebookLM may generate:
+    Handles both formats:
+    - Numbered:   "1. Question A) Choice Resposta: A Explicação: text"
+    - Unnumbered: "Question A) Choice Resposta: A Explicação: text"
 
-    Format 1 — Multi-line (one part per line):
-        1. Question text
-        A) Choice A
-        B) Choice B
-        Resposta: A
-        Explicação: Explanation
-
-    Format 2 — Single-line (entire question on one line):
-        1. Question text A) Choice A B) Choice B Resposta: A Explicação: Explanation
-
-    Returns a list of dicts with keys: question, A, B, C, D, E, answer, explanation
+    Returns list of dicts with keys: question, A, B, C, D, E, answer, explanation
     """
 
     questions = []
 
-    # ── Regex patterns ───────────────────────────────────────────────────────
-    # Splits text into blocks, one per numbered question ("1. " or "1) ")
-    block_split = re.compile(r"(?=\n?\s*\d+[.)]\s)")
-    # Strips the leading "N. " from a block
-    num_strip = re.compile(r"^\d+[.)]\s+")
-    # Extracts a choice: "A) text" — stops before the next choice or keyword
+    answer_re = re.compile(r'Resposta:\s*([A-Ea-e])', re.IGNORECASE)
+    explain_re = re.compile(r'Explica[çc][aã]o:\s*', re.IGNORECASE)
     choice_re = re.compile(
-        r"([A-E])\)\s+(.+?)(?=\s+[A-E]\)|\s+[Rr]esposta:|\s+[Ee]xplica|$)", re.DOTALL)
-    # Extracts the answer letter after "Resposta:"
-    answer_re = re.compile(r"[Rr]esposta:\s*([A-Ea-e])")
-    # Extracts explanation text after "Explicação:" (handles ç/c and ã/a variants)
-    explain_re = re.compile(
-        r"[Ee]xplica[çc][aã]o:\s*(.+?)(?=\s*\d+[.)]\s|\s*$)", re.DOTALL)
+        r'\b([A-E])\)\s*(.+?)(?=\s+[A-E]\)|\s*Resposta:|$)', re.DOTALL)
 
-    # Split the full text into one block per question
-    blocks = block_split.split(text.strip())
+    answer_matches = list(answer_re.finditer(text))
+    explain_matches = list(explain_re.finditer(text))
 
-    for block in blocks:
-        block = block.strip()
-        if not block:
+    if not answer_matches:
+        return []
+
+    def last_a_before(pos):
+        """Returns the position of the last 'A)' before pos — the start of choices."""
+        matches = list(re.finditer(r'\bA\)', text[:pos]))
+        return matches[-1].start() if matches else None
+
+    for i, ans_match in enumerate(answer_matches):
+        answer = ans_match.group(1).upper()
+        choices_start = last_a_before(ans_match.start())
+        if choices_start is None:
             continue
 
-        # Remove the leading question number
-        block = num_strip.sub("", block, count=1).strip()
-        if not block:
-            continue
-
-        q = {}
-
-        # ── Answer ────────────────────────────────────────────────────────
-        m = answer_re.search(block)
-        if not m:
-            continue  # No answer found — skip malformed block
-        q["answer"] = m.group(1).upper()
-
-        # ── Explanation ───────────────────────────────────────────────────
-        m = explain_re.search(block)
-        if m:
-            q["explanation"] = m.group(1).strip()
-        block = explain_re.sub("", block).strip()
-        block = answer_re.sub("", block).strip()
-
-        # ── Choices ───────────────────────────────────────────────────────
-        for cm in choice_re.finditer(block):
-            letter = cm.group(1).upper()
-            q[letter] = cm.group(2).strip().rstrip(".")
-
-        # ── Question text (everything before the first choice) ────────────
-        first_choice = re.search(r"\s+A\)", block)
-        if first_choice:
-            q["question"] = block[:first_choice.start()].strip()
+        # ── Question text ──────────────────────────────────────────────────
+        if i == 0:
+            # First question: take everything before A)
+            raw_question = text[:choices_start].strip()
         else:
-            q["question"] = block.strip()
+            prev_exp_end = explain_matches[i -
+                                           1].end() if i-1 < len(explain_matches) else 0
+            combined = text[prev_exp_end:choices_start].strip()
 
-        if q.get("question") and q.get("answer"):
+            # The combined block = [prev explanation sentence] + [question text].
+            # The explanation is always the FIRST sentence (ends at first ". ").
+            # Using find() — not rfind() — so we correctly handle question texts
+            # that contain periods inside them (e.g. roman numerals "I. II. III.").
+            # Minimum 40 chars to skip fragments shorter than a real sentence.
+            first_period = combined.find('. ', 40)
+            raw_question = combined[first_period +
+                                    2:].strip() if first_period != -1 else combined
+
+        # ── Choices ────────────────────────────────────────────────────────
+        choices_block = text[choices_start:ans_match.start()]
+        choices = {}
+        for cm in choice_re.finditer(choices_block):
+            choices[cm.group(1).upper()] = cm.group(2).strip().rstrip('.')
+
+        # ── Explanation ────────────────────────────────────────────────────
+        explanation = ""
+        if i < len(explain_matches):
+            exp_start = explain_matches[i].end()
+            if i + 1 < len(answer_matches):
+                next_choices = last_a_before(answer_matches[i+1].start())
+                if next_choices:
+                    block = text[exp_start:next_choices]
+                    first_period = block.find('. ', 40)
+                    explanation = block[:first_period +
+                                        1].strip() if first_period != -1 else block.strip()
+            else:
+                explanation = text[exp_start:].strip()
+
+        if raw_question and answer:
+            q = {"question": raw_question, "answer": answer,
+                 "explanation": explanation}
+            q.update(choices)
             questions.append(q)
 
     return questions
