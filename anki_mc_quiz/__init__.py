@@ -454,97 +454,81 @@ def create_note_type():
 
 def parse_questions(text: str) -> list:
     """
-    Parses a block of text in the NotebookLM quiz format into a list of dicts.
+    Parses NotebookLM quiz text into a list of question dicts.
 
-    Expected format per question:
+    Handles both formats that NotebookLM may generate:
+
+    Format 1 — Multi-line (one part per line):
         1. Question text
         A) Choice A
         B) Choice B
-        C) Choice C
-        D) Choice D
-        E) Choice E
         Resposta: A
-        Explicação: Explanation text
+        Explicação: Explanation
 
-    Returns a list of dicts with keys:
-        question, A, B, C, D, E, answer, explanation
+    Format 2 — Single-line (entire question on one line):
+        1. Question text A) Choice A B) Choice B Resposta: A Explicação: Explanation
 
-    Rules:
-        - Question number line: starts with digits followed by a period
-        - Choice lines: start with A) B) C) D) or E) (case-insensitive)
-        - Answer line: starts with "Resposta:" (case-insensitive)
-        - Explanation line: starts with "Explicação:" or "Explicacao:" (case-insensitive)
-        - A blank line signals the end of a question block
+    Returns a list of dicts with keys: question, A, B, C, D, E, answer, explanation
     """
 
     questions = []
 
-    # This dict holds the question currently being assembled.
-    # We reset it every time we start a new question.
-    current = {}
+    # ── Regex patterns ───────────────────────────────────────────────────────
+    # Splits text into blocks, one per numbered question ("1. " or "1) ")
+    block_split = re.compile(r"(?=\n?\s*\d+[.)]\s)")
+    # Strips the leading "N. " from a block
+    num_strip = re.compile(r"^\d+[.)]\s+")
+    # Extracts a choice: "A) text" — stops before the next choice or keyword
+    choice_re = re.compile(
+        r"([A-E])\)\s+(.+?)(?=\s+[A-E]\)|\s+[Rr]esposta:|\s+[Ee]xplica|$)", re.DOTALL)
+    # Extracts the answer letter after "Resposta:"
+    answer_re = re.compile(r"[Rr]esposta:\s*([A-Ea-e])")
+    # Extracts explanation text after "Explicação:" (handles ç/c and ã/a variants)
+    explain_re = re.compile(
+        r"[Ee]xplica[çc][aã]o:\s*(.+?)(?=\s*\d+[.)]\s|\s*$)", re.DOTALL)
 
-    def save_current():
-        """Saves the current question to the list if it has the minimum required fields."""
-        if current.get("question") and current.get("answer"):
-            questions.append(dict(current))
+    # Split the full text into one block per question
+    blocks = block_split.split(text.strip())
 
-    # Regex patterns — compiled once for performance
-    question_pattern = re.compile(
-        r"^\d+\.\s+(.+)")           # "1. Question text"
-    choice_pattern = re.compile(r"^([A-Ea-e])\)\s+(.+)")    # "A) Choice text"
-    answer_pattern = re.compile(r"^[Rr]esposta:\s*([A-Ea-e])", re.IGNORECASE)
-    explanation_pattern = re.compile(
-        r"^[Ee]xplica[çc][aã]o:\s*(.+)", re.IGNORECASE)
-
-    for line in text.splitlines():
-        line = line.strip()
-
-        # Blank line — end of current question block
-        if not line:
-            save_current()
-            current = {}
+    for block in blocks:
+        block = block.strip()
+        if not block:
             continue
 
-        # New question number detected
-        m = question_pattern.match(line)
+        # Remove the leading question number
+        block = num_strip.sub("", block, count=1).strip()
+        if not block:
+            continue
+
+        q = {}
+
+        # ── Answer ────────────────────────────────────────────────────────
+        m = answer_re.search(block)
+        if not m:
+            continue  # No answer found — skip malformed block
+        q["answer"] = m.group(1).upper()
+
+        # ── Explanation ───────────────────────────────────────────────────
+        m = explain_re.search(block)
         if m:
-            # If there was already a question being built, save it first
-            if current:
-                save_current()
-                current = {}
-            current["question"] = m.group(1).strip()
-            continue
+            q["explanation"] = m.group(1).strip()
+        block = explain_re.sub("", block).strip()
+        block = answer_re.sub("", block).strip()
 
-        # Choice line (A, B, C, D or E)
-        m = choice_pattern.match(line)
-        if m:
-            letter = m.group(1).upper()   # normalize to uppercase
-            text_ = m.group(2).strip()
-            current[letter] = text_
-            continue
+        # ── Choices ───────────────────────────────────────────────────────
+        for cm in choice_re.finditer(block):
+            letter = cm.group(1).upper()
+            q[letter] = cm.group(2).strip().rstrip(".")
 
-        # Answer line
-        m = answer_pattern.match(line)
-        if m:
-            current["answer"] = m.group(1).upper()
-            continue
+        # ── Question text (everything before the first choice) ────────────
+        first_choice = re.search(r"\s+A\)", block)
+        if first_choice:
+            q["question"] = block[:first_choice.start()].strip()
+        else:
+            q["question"] = block.strip()
 
-        # Explanation line
-        m = explanation_pattern.match(line)
-        if m:
-            current["explanation"] = m.group(1).strip()
-            continue
-
-        # Continuation of the question text (multi-line question)
-        # If we are inside a question and the line doesn't match anything else,
-        # append it to the question text.
-        if "question" in current and not any(
-            k in current for k in ["A", "B", "answer"]
-        ):
-            current["question"] += " " + line
-
-    # Save the last question in case the text doesn't end with a blank line
-    save_current()
+        if q.get("question") and q.get("answer"):
+            questions.append(q)
 
     return questions
 
