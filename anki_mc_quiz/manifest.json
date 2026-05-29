@@ -1,0 +1,11 @@
+{
+    "name": "Multiple Choice Quiz",
+    "package": "anki_mc_quiz",
+    "ankiweb_id": "",
+    "author": "Eduardo Yuzo Kubota",
+    "version": "1.0.0",
+    "homepage": "https://github.com/eduardokubota/anki-mc-quiz",
+    "tags": ["study", "quiz", "multiple choice"],
+    "conflicts": [],
+    "mod": 0
+}
