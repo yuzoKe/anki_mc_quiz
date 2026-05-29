@@ -28,7 +28,7 @@ FIELDS = [
     "D",          # Choice D (optional — leave blank to hide)
     "E",          # Choice E (optional — leave blank to hide)
     "Answer",     # The correct letter: A, B, C, D, or E
-    "Explanation" # Optional explanation shown after answering
+    "Explanation"  # Optional explanation shown after answering
 ]
 
 # Front template: what the user sees BEFORE answering.
@@ -387,6 +387,7 @@ CARD_CSS = """
 # This ensures users who already have the addon always get the latest templates
 # after updating, without losing any of their cards.
 TEMPLATE_VERSION = "1.1.0"
+
 
 def create_note_type():
     """
