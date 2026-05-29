@@ -8,6 +8,7 @@ Plugin para o Anki que adiciona um tipo de nota de múltipla escolha interativo.
 
 - Até 5 alternativas (A–E) por questão
 - Alternativas em branco são ocultadas automaticamente
+- Ordem das alternativas embaralhada a cada revisão
 - Feedback visual ao clicar: verde para certo, vermelho para errado
 - Campo de explicação opcional (exibido no verso do card)
 - Funciona 100% offline
@@ -19,7 +20,7 @@ Pesquise por **"MC Quiz"** na loja de addons do Anki.
 
 ### Manual (desenvolvimento)
 1. Clone este repositório
-2. Copie a pasta `src/anki_mc_quiz/` para o diretório de addons do Anki:
+2. Copie a pasta `anki_mc_quiz/` para o diretório de addons do Anki:
    - **Windows:** `%APPDATA%\Anki2\addons21\`
    - **macOS:** `~/Library/Application Support/Anki2/addons21/`
    - **Linux:** `~/.local/share/Anki2/addons21/`
@@ -40,12 +41,12 @@ O note type **"Multiple Choice Quiz"** será criado automaticamente na primeira 
 ## Estrutura do projeto
 
 ```
-anki-mc-quiz/
-├── src/
-│   └── anki_mc_quiz/
-│       ├── __init__.py      # Entry point — cria o note type e registra o addon
-│       └── manifest.json    # Metadados do addon para o AnkiWeb
+anki_mc_quiz/
+├── anki_mc_quiz/
+│   ├── __init__.py      # Entry point — cria o note type e registra o addon
+│   └── manifest.json    # Metadados do addon para o AnkiWeb
 ├── .gitignore
+├── LICENSE
 └── README.md
 ```
 
@@ -61,6 +62,7 @@ An Anki addon that adds an interactive multiple choice note type. Choices appear
 
 - Up to 5 choices (A–E) per card
 - Blank choices are hidden automatically
+- Answer order shuffled on every review
 - Visual feedback on click: green for correct, red for wrong
 - Optional explanation field (shown on the card back)
 - Works 100% offline
@@ -72,7 +74,7 @@ Search for **"MC Quiz"** in the Anki addon store.
 
 ### Manual (development)
 1. Clone this repository
-2. Copy the `src/anki_mc_quiz/` folder to your Anki addons directory:
+2. Copy the `anki_mc_quiz/` folder to your Anki addons directory:
    - **Windows:** `%APPDATA%\Anki2\addons21\`
    - **macOS:** `~/Library/Application Support/Anki2/addons21/`
    - **Linux:** `~/.local/share/Anki2/addons21/`
@@ -93,12 +95,12 @@ The **"Multiple Choice Quiz"** note type will be created automatically on first 
 ## Project structure
 
 ```
-anki-mc-quiz/
-├── src/
-│   └── anki_mc_quiz/
-│       ├── __init__.py      # Entry point — creates the note type and registers the addon
-│       └── manifest.json    # Addon metadata for AnkiWeb
+anki_mc_quiz/
+├── anki_mc_quiz/
+│   ├── __init__.py      # Entry point — creates the note type and registers the addon
+│   └── manifest.json    # Addon metadata for AnkiWeb
 ├── .gitignore
+├── LICENSE
 └── README.md
 ```
 
