@@ -12,6 +12,7 @@ from aqt.qt import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QTextEdit, QComboBox, QPushButton, Qt
 )
+import re
 from aqt import mw, gui_hooks
 
 
@@ -447,6 +448,108 @@ def create_note_type():
 
 
 # ---------------------------------------------------------------------------
+# Question parser
+# ---------------------------------------------------------------------------
+
+
+def parse_questions(text: str) -> list:
+    """
+    Parses a block of text in the NotebookLM quiz format into a list of dicts.
+
+    Expected format per question:
+        1. Question text
+        A) Choice A
+        B) Choice B
+        C) Choice C
+        D) Choice D
+        E) Choice E
+        Resposta: A
+        Explicação: Explanation text
+
+    Returns a list of dicts with keys:
+        question, A, B, C, D, E, answer, explanation
+
+    Rules:
+        - Question number line: starts with digits followed by a period
+        - Choice lines: start with A) B) C) D) or E) (case-insensitive)
+        - Answer line: starts with "Resposta:" (case-insensitive)
+        - Explanation line: starts with "Explicação:" or "Explicacao:" (case-insensitive)
+        - A blank line signals the end of a question block
+    """
+
+    questions = []
+
+    # This dict holds the question currently being assembled.
+    # We reset it every time we start a new question.
+    current = {}
+
+    def save_current():
+        """Saves the current question to the list if it has the minimum required fields."""
+        if current.get("question") and current.get("answer"):
+            questions.append(dict(current))
+
+    # Regex patterns — compiled once for performance
+    question_pattern = re.compile(
+        r"^\d+\.\s+(.+)")           # "1. Question text"
+    choice_pattern = re.compile(r"^([A-Ea-e])\)\s+(.+)")    # "A) Choice text"
+    answer_pattern = re.compile(r"^[Rr]esposta:\s*([A-Ea-e])", re.IGNORECASE)
+    explanation_pattern = re.compile(
+        r"^[Ee]xplica[çc][aã]o:\s*(.+)", re.IGNORECASE)
+
+    for line in text.splitlines():
+        line = line.strip()
+
+        # Blank line — end of current question block
+        if not line:
+            save_current()
+            current = {}
+            continue
+
+        # New question number detected
+        m = question_pattern.match(line)
+        if m:
+            # If there was already a question being built, save it first
+            if current:
+                save_current()
+                current = {}
+            current["question"] = m.group(1).strip()
+            continue
+
+        # Choice line (A, B, C, D or E)
+        m = choice_pattern.match(line)
+        if m:
+            letter = m.group(1).upper()   # normalize to uppercase
+            text_ = m.group(2).strip()
+            current[letter] = text_
+            continue
+
+        # Answer line
+        m = answer_pattern.match(line)
+        if m:
+            current["answer"] = m.group(1).upper()
+            continue
+
+        # Explanation line
+        m = explanation_pattern.match(line)
+        if m:
+            current["explanation"] = m.group(1).strip()
+            continue
+
+        # Continuation of the question text (multi-line question)
+        # If we are inside a question and the line doesn't match anything else,
+        # append it to the question text.
+        if "question" in current and not any(
+            k in current for k in ["A", "B", "answer"]
+        ):
+            current["question"] += " " + line
+
+    # Save the last question in case the text doesn't end with a blank line
+    save_current()
+
+    return questions
+
+
+# ---------------------------------------------------------------------------
 # Importer UI
 # ---------------------------------------------------------------------------
 
@@ -535,8 +638,65 @@ class ImporterDialog(QDialog):
     def _on_import(self):
         """
         Triggered when the user clicks Import.
-        For now, just closes the dialog — parsing logic comes in the next commit.
+        Reads the textarea, parses the questions, creates Anki notes, and shows a summary.
         """
+        raw_text = self.text_input.toPlainText().strip()
+
+        if not raw_text:
+            from aqt.utils import showWarning
+            showWarning("Please paste some text before importing.")
+            return
+
+        # Parse the pasted text into a list of question dicts
+        questions = parse_questions(raw_text)
+
+        if not questions:
+            from aqt.utils import showWarning
+            showWarning(
+                "No questions found.\n\n"
+                "Make sure the text follows the expected format:\n"
+                "1. Question text\n"
+                "A) Choice A\n"
+                "Resposta: A\n"
+                "Explicação: Explanation"
+            )
+            return
+
+        # Get the selected deck name and ensure it exists
+        deck_name = self.deck_combo.currentText()
+        # creates the deck if it doesn't exist
+        deck_id = mw.col.decks.id(deck_name)
+        mw.col.decks.select(deck_id)
+
+        # Get our custom note type
+        model = mw.col.models.by_name(NOTE_TYPE_NAME)
+        if not model:
+            from aqt.utils import showWarning
+            showWarning(
+                "Multiple Choice Quiz note type not found. Please restart Anki.")
+            return
+
+        # Create one Anki note per parsed question
+        created = 0
+        for q in questions:
+            note = mw.col.new_note(model)
+            note["Question"] = q.get("question",    "")
+            note["A"] = q.get("A",           "")
+            note["B"] = q.get("B",           "")
+            note["C"] = q.get("C",           "")
+            note["D"] = q.get("D",           "")
+            note["E"] = q.get("E",           "")
+            note["Answer"] = q.get("answer",      "")
+            note["Explanation"] = q.get("explanation", "")
+            note.note_type()["did"] = deck_id
+            mw.col.add_note(note, deck_id)
+            created += 1
+
+        # Refresh the Anki UI so the new cards appear immediately
+        mw.reset()
+
+        from aqt.utils import showInfo
+        showInfo(f"{created} card(s) added to '{deck_name}'.")
         self.accept()
 
 
