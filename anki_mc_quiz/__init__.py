@@ -457,73 +457,53 @@ def parse_questions(text: str) -> list:
     Parses NotebookLM quiz text into a list of question dicts.
 
     Handles both formats:
-    - Numbered:   "1. Question A) Choice Resposta: A Explicação: text"
-    - Unnumbered: "Question A) Choice Resposta: A Explicação: text"
+    - Numbered:   "1. Question A) Choice Resposta: A Explicação: text."
+    - Unnumbered: "Question A) Choice Resposta: A Explicação: text."
 
     Returns list of dicts with keys: question, A, B, C, D, E, answer, explanation
     """
 
     questions = []
 
-    answer_re = re.compile(r'Resposta:\s*([A-Ea-e])', re.IGNORECASE)
-    explain_re = re.compile(r'Explica[çc][aã]o:\s*', re.IGNORECASE)
+    # Match the full tail of each question as a single unit so the explanation
+    # boundary is captured by the regex rather than a fragile period heuristic.
+    tail_re = re.compile(
+        r'Resposta:\s*([A-Ea-e])\s+Explica[çc][aã]o:\s*([^.]+\.)',
+        re.IGNORECASE
+    )
     choice_re = re.compile(
         r'\b([A-E])\)\s*(.+?)(?=\s+[A-E]\)|\s*Resposta:|$)', re.DOTALL)
 
-    answer_matches = list(answer_re.finditer(text))
-    explain_matches = list(explain_re.finditer(text))
-
-    if not answer_matches:
+    tail_matches = list(tail_re.finditer(text))
+    if not tail_matches:
         return []
 
     def last_a_before(pos):
-        """Returns the position of the last 'A)' before pos — the start of choices."""
         matches = list(re.finditer(r'\bA\)', text[:pos]))
         return matches[-1].start() if matches else None
 
-    for i, ans_match in enumerate(answer_matches):
-        answer = ans_match.group(1).upper()
-        choices_start = last_a_before(ans_match.start())
+    for i, tail in enumerate(tail_matches):
+        answer = tail.group(1).upper()
+        explanation = tail.group(2).strip()
+
+        # ── Choices ────────────────────────────────────────────────────────
+        choices_start = last_a_before(tail.start())
         if choices_start is None:
             continue
 
-        # ── Question text ──────────────────────────────────────────────────
-        if i == 0:
-            # First question: take everything before A)
-            raw_question = text[:choices_start].strip()
-        else:
-            prev_exp_end = explain_matches[i -
-                                           1].end() if i-1 < len(explain_matches) else 0
-            combined = text[prev_exp_end:choices_start].strip()
-
-            # The combined block = [prev explanation sentence] + [question text].
-            # The explanation is always the FIRST sentence (ends at first ". ").
-            # Using find() — not rfind() — so we correctly handle question texts
-            # that contain periods inside them (e.g. roman numerals "I. II. III.").
-            # Minimum 40 chars to skip fragments shorter than a real sentence.
-            first_period = combined.find('. ', 40)
-            raw_question = combined[first_period +
-                                    2:].strip() if first_period != -1 else combined
-
-        # ── Choices ────────────────────────────────────────────────────────
-        choices_block = text[choices_start:ans_match.start()]
+        choices_block = text[choices_start:tail.start()]
         choices = {}
         for cm in choice_re.finditer(choices_block):
             choices[cm.group(1).upper()] = cm.group(2).strip().rstrip('.')
 
-        # ── Explanation ────────────────────────────────────────────────────
-        explanation = ""
-        if i < len(explain_matches):
-            exp_start = explain_matches[i].end()
-            if i + 1 < len(answer_matches):
-                next_choices = last_a_before(answer_matches[i+1].start())
-                if next_choices:
-                    block = text[exp_start:next_choices]
-                    first_period = block.find('. ', 40)
-                    explanation = block[:first_period +
-                                        1].strip() if first_period != -1 else block.strip()
-            else:
-                explanation = text[exp_start:].strip()
+        # ── Question text ──────────────────────────────────────────────────
+        if i == 0:
+            raw_question = text[:choices_start].strip()
+        else:
+            raw_question = text[tail_matches[i - 1].end():choices_start].strip()
+
+        # Strip leading question numbers like "1. " or "1) "
+        raw_question = re.sub(r'^\d+[\.\)]\s*', '', raw_question)
 
         if raw_question and answer:
             q = {"question": raw_question, "answer": answer,
