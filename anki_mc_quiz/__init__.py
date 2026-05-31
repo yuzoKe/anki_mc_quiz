@@ -463,6 +463,9 @@ def parse_questions(text: str) -> list:
     Returns list of dicts with keys: question, A, B, C, D, E, answer, explanation
     """
 
+    # Strip leading all-caps report title (lines with no ASCII lowercase letters)
+    text = re.sub(r'^(?:[^\na-z]*\n)+\s*', '', text.strip())
+
     questions = []
 
     # Match the full tail of each question as a single unit so the explanation
