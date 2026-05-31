@@ -13,6 +13,9 @@ Funcionalidades já implementadas:
 5. TEMPLATE_VERSION para sync automático quando o usuário atualiza o addon
 6. Menu Tools > Import from NotebookLM: janela Qt com textarea, deck selector, botão importar
 7. parse_questions: parser que extrai questões do texto gerado pelo NotebookLM
+   - Usa regex de "cauda" (Resposta: X Explicação: frase.) como unidade única para evitar heurística frágil de ponto-espaço
+   - Pré-processa o texto removendo o título em CAPS (ex: "RELATÓRIO DE AVALIAÇÃO: ...") antes de parsear
+   - Suporta formato numerado ("1. Enunciado") e sem numeração
 
 Contexto do projeto:
 - Desenvolvido durante o Clube da Programação da Laura Dubugras (4 semanas)
