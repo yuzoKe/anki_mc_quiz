@@ -10,7 +10,8 @@
 
 from aqt.qt import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QTextEdit, QComboBox, QPushButton, QTabWidget, QWidget, Qt
+    QTextEdit, QComboBox, QPushButton, QTabWidget, QWidget,
+    QApplication, Qt
 )
 import re
 from aqt import mw, gui_hooks
@@ -22,6 +23,28 @@ from aqt import mw, gui_hooks
 
 # This is the name that will appear in Anki's note type list.
 NOTE_TYPE_NAME = "Multiple Choice Quiz"
+
+PROMPT_MC = (
+    "Crie um Relatório Personalizado transformando todas as atividades avaliativas "
+    "das fontes em questões de múltipla escolha. Siga exatamente este formato para cada questão:\n"
+    "1. [Enunciado]\n"
+    "A) [Alternativa A]\n"
+    "B) [Alternativa B]\n"
+    "C) [Alternativa C]\n"
+    "D) [Alternativa D]\n"
+    "E) [Alternativa E]\n"
+    "Resposta: A\n"
+    "Explicação: [Uma frase]\n"
+    "Regras: numeração sequencial, letras maiúsculas, uma linha em branco entre questões, "
+    "sem títulos ou gabarito separado."
+)
+
+PROMPT_CLOZE = (
+    "Crie um Relatório Personalizado transformando todos os conceitos das fontes "
+    "em flashcards no formato Cloze.\n"
+    "Formato: {{c1::termo}} é/são [contexto].\n"
+    "Regras: uma linha por card, apenas {{c1::}}, sem numeração, sem duplicatas."
+)
 
 # These are the fields the user will fill in when creating a card.
 # "Explanation" is optional — the card will work without it.
@@ -556,6 +579,22 @@ class ImporterDialog(QDialog):
         layout.setSpacing(12)
         layout.setContentsMargins(20, 20, 20, 20)
 
+        # ── Prompt copy buttons ───────────────────────────────────────────
+        prompt_row = QHBoxLayout()
+        btn_copy_mc = QPushButton("Prompt Múltipla Escolha  📋")
+        btn_copy_mc.setToolTip("Copia o prompt de múltipla escolha para o clipboard")
+        btn_copy_mc.clicked.connect(
+            lambda: self._copy_to_clipboard(PROMPT_MC, btn_copy_mc, "Prompt Múltipla Escolha  📋")
+        )
+        btn_copy_cloze = QPushButton("Prompt Cloze  📋")
+        btn_copy_cloze.setToolTip("Copia o prompt Cloze para o clipboard")
+        btn_copy_cloze.clicked.connect(
+            lambda: self._copy_to_clipboard(PROMPT_CLOZE, btn_copy_cloze, "Prompt Cloze  📋")
+        )
+        prompt_row.addWidget(btn_copy_mc)
+        prompt_row.addWidget(btn_copy_cloze)
+        layout.addLayout(prompt_row)
+
         # ── Tabs ──────────────────────────────────────────────────────────
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_mc_tab(), "Multiple Choice")
@@ -625,6 +664,12 @@ class ImporterDialog(QDialog):
         self.cloze_input.setPlaceholderText("Paste your NotebookLM Cloze text here...")
         layout.addWidget(self.cloze_input)
         return tab
+
+    def _copy_to_clipboard(self, text, btn, original_label):
+        QApplication.clipboard().setText(text)
+        btn.setText("Copiado! ✓")
+        from aqt.qt import QTimer
+        QTimer.singleShot(1500, lambda: btn.setText(original_label))
 
     def _on_import(self):
         if self.tabs.currentIndex() == 0:
