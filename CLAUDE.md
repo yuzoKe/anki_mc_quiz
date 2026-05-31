@@ -14,12 +14,6 @@ Funcionalidades já implementadas:
 6. Menu Tools > Import from NotebookLM: janela Qt com textarea, deck selector, botão importar
 7. parse_questions: parser que extrai questões do texto gerado pelo NotebookLM
 
-Problema atual na parse_questions:
-- O NotebookLM gera texto sem numeração, tudo numa linha só
-- Formato: "Enunciado A) op1 B) op2 Resposta: A Explicação: texto. Enunciado A) op1..."
-- O parser atual não separa corretamente as questões nesse formato
-- Precisa usar "Resposta:" como âncora e "A)" como início das alternativas
-
 Contexto do projeto:
 - Desenvolvido durante o Clube da Programação da Laura Dubugras (4 semanas)
 - Projeto nasceu do zero durante o clube
