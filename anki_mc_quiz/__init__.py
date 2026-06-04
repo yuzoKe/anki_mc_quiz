@@ -13,7 +13,7 @@ from aqt.qt import (
     QTextEdit, QComboBox, QPushButton, QTabWidget, QWidget,
     QListWidget, QAbstractItemView, QListWidgetItem,
     QLineEdit, QFileDialog, QMessageBox,
-    QScrollArea, QApplication, Qt
+    QScrollArea, QFrame, QApplication, Qt
 )
 import re
 from aqt import mw, gui_hooks
@@ -999,6 +999,15 @@ _OBS_DEFAULT_PROP_ROWS = [
     ["anki-deck", "{{deck}}",  "text"],
 ]
 
+_OBS_DEFAULT_TEMPLATES = [
+    {
+        "name": "Default",
+        "filename": _OBS_DEFAULT_FILENAME,
+        "prop_rows": _OBS_DEFAULT_PROP_ROWS,
+        "content": _OBS_DEFAULT_CONTENT,
+    }
+]
+
 
 class _PropertyRow(QWidget):
     """A single key/value row in the properties editor."""
@@ -1053,14 +1062,23 @@ class ObsidianExporterDialog(QDialog):
     # ── Config ───────────────────────────────────────────────────────────────
 
     def _load_config(self) -> dict:
+        raw = mw.addonManager.getConfig(__name__) or {}
+        # Migrate old single-template format to the new templates list
+        if "obs_prop_rows" in raw and "obs_templates" not in raw:
+            raw["obs_templates"] = [{
+                "name": "Default",
+                "filename": raw.pop("obs_template_filename", _OBS_DEFAULT_FILENAME),
+                "prop_rows": raw.pop("obs_prop_rows", _OBS_DEFAULT_PROP_ROWS),
+                "content": raw.pop("obs_template_content", _OBS_DEFAULT_CONTENT),
+            }]
+            raw.setdefault("obs_active_template", "Default")
         defaults = {
             "obsidian_vault_path": "",
             "obsidian_last_folder": "",
-            "obs_template_filename": _OBS_DEFAULT_FILENAME,
-            "obs_prop_rows": _OBS_DEFAULT_PROP_ROWS,
-            "obs_template_content": _OBS_DEFAULT_CONTENT,
+            "obs_templates": list(_OBS_DEFAULT_TEMPLATES),
+            "obs_active_template": _OBS_DEFAULT_TEMPLATES[0]["name"],
         }
-        return {**defaults, **(mw.addonManager.getConfig(__name__) or {})}
+        return {**defaults, **raw}
 
     def _save_config(self) -> None:
         mw.addonManager.writeConfig(__name__, self._cfg)
@@ -1171,16 +1189,47 @@ class ObsidianExporterDialog(QDialog):
     def _build_template_tab(self) -> QWidget:
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
         layout.setContentsMargins(16, 16, 16, 16)
 
-        # Filename template
+        # ── Template selector row ─────────────────────────────────────────────
+        tmpl_row = QHBoxLayout()
+        tmpl_row.addWidget(QLabel("Template:"))
+        self.tmpl_combo = QComboBox()
+        self.tmpl_combo.setMinimumWidth(140)
+        for t in self._cfg.get("obs_templates", _OBS_DEFAULT_TEMPLATES):
+            self.tmpl_combo.addItem(t["name"])
+        active = self._cfg.get("obs_active_template",
+                               _OBS_DEFAULT_TEMPLATES[0]["name"])
+        idx = self.tmpl_combo.findText(active)
+        self.tmpl_combo.setCurrentIndex(max(0, idx))
+
+        btn_new = QPushButton("Novo")
+        btn_new.setFixedWidth(55)
+        btn_dup = QPushButton("Duplicar")
+        btn_dup.setFixedWidth(72)
+        btn_del = QPushButton("Excluir")
+        btn_del.setFixedWidth(65)
+        btn_save = QPushButton("Salvar")
+        btn_save.setFixedWidth(60)
+
+        tmpl_row.addWidget(self.tmpl_combo, stretch=1)
+        tmpl_row.addWidget(btn_new)
+        tmpl_row.addWidget(btn_dup)
+        tmpl_row.addWidget(btn_del)
+        tmpl_row.addWidget(btn_save)
+        layout.addLayout(tmpl_row)
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setStyleSheet("color: #444;")
+        layout.addWidget(sep)
+
+        # ── Filename ──────────────────────────────────────────────────────────
         fn_row = QHBoxLayout()
         fn_label = QLabel("Nome do ficheiro:")
         fn_label.setFixedWidth(140)
         self.filename_edit = QLineEdit()
-        self.filename_edit.setText(
-            self._cfg.get("obs_template_filename", _OBS_DEFAULT_FILENAME))
         fn_row.addWidget(fn_label)
         fn_row.addWidget(self.filename_edit, stretch=1)
         layout.addLayout(fn_row)
@@ -1194,13 +1243,8 @@ class ObsidianExporterDialog(QDialog):
         vars_hint.setWordWrap(True)
         layout.addWidget(vars_hint)
 
-        # Properties section header
-        props_header = QHBoxLayout()
-        props_header.addWidget(QLabel("Propriedades:"))
-        props_header.addStretch()
-        layout.addLayout(props_header)
-
-        # Scrollable container for property rows
+        # ── Properties ────────────────────────────────────────────────────────
+        layout.addWidget(QLabel("Propriedades:"))
         self._props_container = QWidget()
         self._props_layout = QVBoxLayout(self._props_container)
         self._props_layout.setContentsMargins(0, 0, 0, 0)
@@ -1210,13 +1254,9 @@ class ObsidianExporterDialog(QDialog):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setWidget(self._props_container)
-        scroll.setFixedHeight(140)
+        scroll.setFixedHeight(130)
         scroll.setFrameShape(scroll.Shape.StyledPanel)
         layout.addWidget(scroll)
-
-        for row_data in self._cfg.get("obs_prop_rows", _OBS_DEFAULT_PROP_ROWS):
-            key, val, *rest = row_data
-            self._add_property_row(key, val, rest[0] if rest else "text")
 
         add_prop_btn = QPushButton("+ Adicionar propriedade")
         add_prop_btn.setFlat(True)
@@ -1224,21 +1264,27 @@ class ObsidianExporterDialog(QDialog):
         add_prop_btn.clicked.connect(lambda: self._add_property_row())
         layout.addWidget(add_prop_btn)
 
-        # Content template
+        # ── Content ───────────────────────────────────────────────────────────
         layout.addWidget(QLabel("Conteúdo da nota:"))
         self.content_edit = QTextEdit()
-        self.content_edit.setPlainText(
-            self._cfg.get("obs_template_content", _OBS_DEFAULT_CONTENT))
         layout.addWidget(self.content_edit, stretch=1)
 
-        # Reset button
-        reset_row = QHBoxLayout()
-        reset_row.addStretch()
+        # ── Bottom row ────────────────────────────────────────────────────────
+        bottom_row = QHBoxLayout()
+        bottom_row.addStretch()
         reset_btn = QPushButton("Repor padrões")
         reset_btn.setFixedWidth(120)
+        bottom_row.addWidget(reset_btn)
+        layout.addLayout(bottom_row)
+
+        # ── Load active template & wire signals ───────────────────────────────
+        self._load_template_into_ui(self._get_active_template())
+        self.tmpl_combo.currentIndexChanged.connect(self._on_template_selected)
+        btn_new.clicked.connect(self._on_new_template)
+        btn_dup.clicked.connect(self._on_duplicate_template)
+        btn_del.clicked.connect(self._on_delete_template)
+        btn_save.clicked.connect(self._on_save_template)
         reset_btn.clicked.connect(self._on_reset_template)
-        reset_row.addWidget(reset_btn)
-        layout.addLayout(reset_row)
 
         return tab
 
@@ -1330,15 +1376,137 @@ class ObsidianExporterDialog(QDialog):
             if r.key_edit.text().strip()
         ]
 
-    # ── Template reset ───────────────────────────────────────────────────────
+    # ── Template management ──────────────────────────────────────────────────
 
-    def _on_reset_template(self) -> None:
-        self.filename_edit.setText(_OBS_DEFAULT_FILENAME)
+    def _get_templates(self) -> list:
+        return self._cfg.setdefault("obs_templates", list(_OBS_DEFAULT_TEMPLATES))
+
+    def _get_active_template(self) -> dict:
+        templates = self._get_templates()
+        name = self._cfg.get("obs_active_template", templates[0]["name"])
+        for t in templates:
+            if t["name"] == name:
+                return t
+        return templates[0]
+
+    def _load_template_into_ui(self, tmpl: dict) -> None:
+        self.filename_edit.setText(tmpl.get("filename", _OBS_DEFAULT_FILENAME))
         for row in list(self._prop_rows):
             self._remove_property_row(row)
-        for key, val, ptype in _OBS_DEFAULT_PROP_ROWS:
-            self._add_property_row(key, val, ptype)
-        self.content_edit.setPlainText(_OBS_DEFAULT_CONTENT)
+        for row_data in tmpl.get("prop_rows", _OBS_DEFAULT_PROP_ROWS):
+            key, val, *rest = row_data
+            self._add_property_row(key, val, rest[0] if rest else "text")
+        self.content_edit.setPlainText(tmpl.get("content", _OBS_DEFAULT_CONTENT))
+
+    def _read_ui_as_template(self) -> dict:
+        return {
+            "name": self.tmpl_combo.currentText(),
+            "filename": self.filename_edit.text().strip() or _OBS_DEFAULT_FILENAME,
+            "prop_rows": self._get_prop_rows_data(),
+            "content": self.content_edit.toPlainText(),
+        }
+
+    def _save_active_to_config(self) -> None:
+        current = self._read_ui_as_template()
+        templates = self._get_templates()
+        name = self._cfg.get("obs_active_template", "")
+        for i, t in enumerate(templates):
+            if t["name"] == name:
+                templates[i] = current
+                break
+        self._cfg["obs_templates"] = templates
+
+    def _on_save_template(self) -> None:
+        self._save_active_to_config()
+        self._save_config()
+
+    def _on_template_selected(self, index: int) -> None:
+        self._save_active_to_config()
+        templates = self._get_templates()
+        if 0 <= index < len(templates):
+            self._cfg["obs_active_template"] = templates[index]["name"]
+            self._load_template_into_ui(templates[index])
+            self._save_config()
+
+    def _on_new_template(self) -> None:
+        from aqt.utils import getText
+        name, ok = getText("Nome do novo template:", title="Novo template")
+        if not ok or not name.strip():
+            return
+        name = name.strip()
+        if any(t["name"] == name for t in self._get_templates()):
+            from aqt.utils import showWarning
+            showWarning(f"Já existe um template com o nome '{name}'.")
+            return
+        new_tmpl = {
+            "name": name,
+            "filename": _OBS_DEFAULT_FILENAME,
+            "prop_rows": [list(r) for r in _OBS_DEFAULT_PROP_ROWS],
+            "content": _OBS_DEFAULT_CONTENT,
+        }
+        self._get_templates().append(new_tmpl)
+        self._cfg["obs_active_template"] = name
+        self.tmpl_combo.blockSignals(True)
+        self.tmpl_combo.addItem(name)
+        self.tmpl_combo.setCurrentIndex(self.tmpl_combo.count() - 1)
+        self.tmpl_combo.blockSignals(False)
+        self._load_template_into_ui(new_tmpl)
+        self._save_config()
+
+    def _on_duplicate_template(self) -> None:
+        from aqt.utils import getText
+        current = self._read_ui_as_template()
+        suggested = f"Cópia de {current['name']}"
+        name, ok = getText("Nome do template duplicado:",
+                           default=suggested, title="Duplicar template")
+        if not ok or not name.strip():
+            return
+        name = name.strip()
+        if any(t["name"] == name for t in self._get_templates()):
+            from aqt.utils import showWarning
+            showWarning(f"Já existe um template com o nome '{name}'.")
+            return
+        dup = {**current, "name": name}
+        self._get_templates().append(dup)
+        self._cfg["obs_active_template"] = name
+        self.tmpl_combo.blockSignals(True)
+        self.tmpl_combo.addItem(name)
+        self.tmpl_combo.setCurrentIndex(self.tmpl_combo.count() - 1)
+        self.tmpl_combo.blockSignals(False)
+        self._load_template_into_ui(dup)
+        self._save_config()
+
+    def _on_delete_template(self) -> None:
+        templates = self._get_templates()
+        if len(templates) <= 1:
+            from aqt.utils import showWarning
+            showWarning("Não é possível excluir o único template.")
+            return
+        name = self.tmpl_combo.currentText()
+        reply = QMessageBox.question(
+            self, "Excluir template",
+            f"Excluir o template '{name}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        idx = self.tmpl_combo.currentIndex()
+        self._cfg["obs_templates"] = [t for t in templates if t["name"] != name]
+        new_idx = max(0, idx - 1)
+        self._cfg["obs_active_template"] = self._get_templates()[new_idx]["name"]
+        self.tmpl_combo.blockSignals(True)
+        self.tmpl_combo.removeItem(idx)
+        self.tmpl_combo.setCurrentIndex(new_idx)
+        self.tmpl_combo.blockSignals(False)
+        self._load_template_into_ui(self._get_templates()[new_idx])
+        self._save_config()
+
+    def _on_reset_template(self) -> None:
+        self._load_template_into_ui({
+            "filename": _OBS_DEFAULT_FILENAME,
+            "prop_rows": _OBS_DEFAULT_PROP_ROWS,
+            "content": _OBS_DEFAULT_CONTENT,
+        })
 
     # ── Export ───────────────────────────────────────────────────────────────
 
@@ -1424,9 +1592,7 @@ class ObsidianExporterDialog(QDialog):
             return
 
         self._cfg["obsidian_last_folder"] = folder_rel
-        self._cfg["obs_template_filename"] = tmpl_fn
-        self._cfg["obs_prop_rows"] = self._get_prop_rows_data()
-        self._cfg["obs_template_content"] = tmpl_content
+        self._save_active_to_config()
         self._save_config()
 
         showInfo(f"Exportado para Obsidian:\n{filepath}")
