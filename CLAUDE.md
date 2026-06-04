@@ -21,6 +21,7 @@ Funcionalidades já implementadas:
 10. Tags input: campo QLineEdit abaixo do deck selector; aplica tags a todos os cards importados na sessão
 11. Duplicate detection: _is_duplicate_mc() e _is_duplicate_cloze() via mw.col.find_notes(); duplicatas são puladas com contagem no relatório final
 12. Preview pane: QListWidget em cada aba atualizado ao digitar via textChanged; mostra itens parseados (com resposta para MC) antes do import; erro em vermelho se nenhum item detectado
+13. Export to Obsidian: Menu Tools > Export to Obsidian (ObsidianExporterDialog); seleciona baralho Anki existente, exporta todos os cards como nota .md; sistema de templates com variáveis {{title}}, {{date}}, {{deck}}, {{tags}}, {{cards}}, {{mc_cards}}, {{cloze_cards}}; tags Anki (UNIVESP::COM130) convertidas para flat YAML (UNIVESP, COM130); vault path e templates persistidos via mw.addonManager
 
 Contexto do projeto:
 - Desenvolvido durante o Clube da Programação da Laura Dubugras (4 semanas)

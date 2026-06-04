@@ -1261,18 +1261,18 @@ def on_main_window_ready():
 
 
 def _register_menu():
-    """
-    Adds 'Import from NotebookLM' under Anki's Tools menu.
-    Clicking it opens the ImporterDialog.
-    """
-    action = mw.form.menuTools.addAction("Import from NotebookLM")
-    action.triggered.connect(_open_importer)
+    mw.form.menuTools.addAction("Import from NotebookLM").triggered.connect(
+        _open_importer)
+    mw.form.menuTools.addAction("Export to Obsidian").triggered.connect(
+        _open_obsidian_exporter)
 
 
 def _open_importer():
-    """Opens the importer dialog."""
-    dialog = ImporterDialog(parent=mw)
-    dialog.exec()
+    ImporterDialog(parent=mw).exec()
+
+
+def _open_obsidian_exporter():
+    ObsidianExporterDialog(parent=mw).exec()
 
 
 # Register our function to run after Anki finishes loading.
