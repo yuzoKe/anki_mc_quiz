@@ -13,7 +13,7 @@ from aqt.qt import (
     QTextEdit, QComboBox, QPushButton, QTabWidget, QWidget,
     QListWidget, QAbstractItemView, QListWidgetItem,
     QLineEdit, QFileDialog, QMessageBox,
-    QApplication, Qt
+    QScrollArea, QApplication, Qt
 )
 import re
 from aqt import mw, gui_hooks
@@ -952,10 +952,34 @@ class ImporterDialog(QDialog):
 # ---------------------------------------------------------------------------
 
 _OBS_DEFAULT_FILENAME = "{{title}}.md"
-_OBS_DEFAULT_PROPERTIES = (
-    "tags:\n{{tags}}\ncreated: {{date}}\nanki-deck: {{deck}}"
-)
+_OBS_DEFAULT_PROP_ROWS = [
+    ["tags", "{{tags}}"],
+    ["created", "{{date}}"],
+    ["anki-deck", "{{deck}}"],
+]
 _OBS_DEFAULT_CONTENT = "{{cards}}"
+
+
+class _PropertyRow(QWidget):
+    """A single key/value row in the properties editor."""
+
+    def __init__(self, key: str = "", value: str = "", parent=None):
+        super().__init__(parent)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 2, 0, 2)
+        layout.setSpacing(6)
+        self.key_edit = QLineEdit(key)
+        self.key_edit.setPlaceholderText("Propriedade")
+        self.key_edit.setFixedWidth(130)
+        self.val_edit = QLineEdit(value)
+        self.val_edit.setPlaceholderText("Valor ou {{variável}}")
+        self.del_btn = QPushButton("×")
+        self.del_btn.setFixedSize(26, 26)
+        self.del_btn.setStyleSheet("font-weight: bold; color: #aaa; border: none;")
+        self.del_btn.setToolTip("Remover propriedade")
+        layout.addWidget(self.key_edit)
+        layout.addWidget(self.val_edit, stretch=1)
+        layout.addWidget(self.del_btn)
 
 
 class ObsidianExporterDialog(QDialog):
@@ -978,7 +1002,7 @@ class ObsidianExporterDialog(QDialog):
             "obsidian_vault_path": "",
             "obsidian_last_folder": "",
             "obs_template_filename": _OBS_DEFAULT_FILENAME,
-            "obs_template_properties": _OBS_DEFAULT_PROPERTIES,
+            "obs_prop_rows": _OBS_DEFAULT_PROP_ROWS,
             "obs_template_content": _OBS_DEFAULT_CONTENT,
         }
         return {**defaults, **(mw.addonManager.getConfig(__name__) or {})}
@@ -1114,13 +1138,34 @@ class ObsidianExporterDialog(QDialog):
         vars_hint.setWordWrap(True)
         layout.addWidget(vars_hint)
 
-        # Properties template
-        layout.addWidget(QLabel("Propriedades (YAML frontmatter):"))
-        self.props_edit = QTextEdit()
-        self.props_edit.setPlainText(
-            self._cfg.get("obs_template_properties", _OBS_DEFAULT_PROPERTIES))
-        self.props_edit.setFixedHeight(100)
-        layout.addWidget(self.props_edit)
+        # Properties section header
+        props_header = QHBoxLayout()
+        props_header.addWidget(QLabel("Propriedades:"))
+        props_header.addStretch()
+        layout.addLayout(props_header)
+
+        # Scrollable container for property rows
+        self._props_container = QWidget()
+        self._props_layout = QVBoxLayout(self._props_container)
+        self._props_layout.setContentsMargins(0, 0, 0, 0)
+        self._props_layout.setSpacing(2)
+        self._prop_rows: list = []
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(self._props_container)
+        scroll.setFixedHeight(140)
+        scroll.setFrameShape(scroll.Shape.StyledPanel)
+        layout.addWidget(scroll)
+
+        for key, val in self._cfg.get("obs_prop_rows", _OBS_DEFAULT_PROP_ROWS):
+            self._add_property_row(key, val)
+
+        add_prop_btn = QPushButton("+ Adicionar propriedade")
+        add_prop_btn.setFlat(True)
+        add_prop_btn.setStyleSheet("color: #6c9; text-align: left; padding: 2px 0;")
+        add_prop_btn.clicked.connect(lambda: self._add_property_row())
+        layout.addWidget(add_prop_btn)
 
         # Content template
         layout.addWidget(QLabel("Conteúdo da nota:"))
@@ -1207,11 +1252,35 @@ class ObsidianExporterDialog(QDialog):
                 rel = path
             self.folder_edit.setText(rel)
 
+    # ── Property row helpers ─────────────────────────────────────────────────
+
+    def _add_property_row(self, key: str = "", value: str = "") -> None:
+        row = _PropertyRow(key, value, parent=self._props_container)
+        row.del_btn.clicked.connect(lambda: self._remove_property_row(row))
+        self._prop_rows.append(row)
+        self._props_layout.addWidget(row)
+
+    def _remove_property_row(self, row: "_PropertyRow") -> None:
+        if row in self._prop_rows:
+            self._prop_rows.remove(row)
+        row.setParent(None)
+        row.deleteLater()
+
+    def _get_prop_rows_data(self) -> list:
+        return [
+            [r.key_edit.text().strip(), r.val_edit.text().strip()]
+            for r in self._prop_rows
+            if r.key_edit.text().strip()
+        ]
+
     # ── Template reset ───────────────────────────────────────────────────────
 
     def _on_reset_template(self) -> None:
         self.filename_edit.setText(_OBS_DEFAULT_FILENAME)
-        self.props_edit.setPlainText(_OBS_DEFAULT_PROPERTIES)
+        for row in list(self._prop_rows):
+            self._remove_property_row(row)
+        for key, val in _OBS_DEFAULT_PROP_ROWS:
+            self._add_property_row(key, val)
         self.content_edit.setPlainText(_OBS_DEFAULT_CONTENT)
 
     # ── Export ───────────────────────────────────────────────────────────────
@@ -1238,7 +1307,6 @@ class ObsidianExporterDialog(QDialog):
         deck_name = self.deck_combo.currentText()
         title = self.title_edit.text().strip() or deck_name
         tmpl_fn = self.filename_edit.text().strip() or _OBS_DEFAULT_FILENAME
-        tmpl_props = self.props_edit.toPlainText()
         tmpl_content = self.content_edit.toPlainText()
 
         # Render filename
@@ -1261,6 +1329,24 @@ class ObsidianExporterDialog(QDialog):
                 return
 
         obs_tags = _anki_tags_to_obsidian(self._all_tags)
+
+        # Build properties YAML from structured rows
+        from datetime import date as _date
+        all_vars = {
+            "title": title, "date": _date.today().isoformat(),
+            "deck": deck_name,
+            "tags": "\n".join(f"  - {t}" for t in obs_tags),
+        }
+        yaml_lines = []
+        for key, val_tmpl in self._get_prop_rows_data():
+            rendered = _render_template(val_tmpl, all_vars)
+            if "\n" in rendered:
+                yaml_lines.append(f"{key}:")
+                yaml_lines.append(rendered)
+            else:
+                yaml_lines.append(f"{key}: {rendered}")
+        tmpl_props = "\n".join(yaml_lines)
+
         content = _build_obsidian_note(
             title=title, deck_name=deck_name, obs_tags=obs_tags,
             mc_notes=self._mc_notes, cloze_notes=self._cloze_notes,
@@ -1276,7 +1362,7 @@ class ObsidianExporterDialog(QDialog):
 
         self._cfg["obsidian_last_folder"] = folder_rel
         self._cfg["obs_template_filename"] = tmpl_fn
-        self._cfg["obs_template_properties"] = tmpl_props
+        self._cfg["obs_prop_rows"] = self._get_prop_rows_data()
         self._cfg["obs_template_content"] = tmpl_content
         self._save_config()
 
