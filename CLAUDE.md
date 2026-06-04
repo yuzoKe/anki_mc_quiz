@@ -37,11 +37,12 @@ Linhas ~22-60   Constantes: NOTE_TYPE_NAME, PROMPT_MC, PROMPT_CLOZE, FIELDS
 Linhas ~62-410  Templates: FRONT_TEMPLATE, BACK_TEMPLATE, CARD_CSS
 Linhas ~412-475 TEMPLATE_VERSION + create_note_type()
 Linhas ~477-560 Parsers: parse_questions(), parse_cloze()
-Linhas ~562-620 Helpers Obsidian: _anki_tags_to_obsidian(), _format_mc_cards(),
-                _format_cloze_cards(), _render_template(), _build_obsidian_note()
-Linhas ~622+    ImporterDialog (QDialog) — 2 abas: MC e Cloze
-Linhas ~920+    ObsidianExporterDialog (QDialog) — 2 abas: Exportar e Modelo
-Linhas ~1250+   Startup: on_main_window_ready(), _register_menu(),
+Linhas ~562-680 Helpers Obsidian: _anki_tags_to_obsidian(), _format_mc_cards(),
+                _format_cloze_cards(), _format_mc_callouts(), _format_cloze_callouts(),
+                _render_template(), _build_obsidian_note(extra_vars=None)
+Linhas ~680+    ImporterDialog (QDialog) — 2 abas: MC e Cloze
+Linhas ~980+    _PROP_TYPES, _OBS_DEFAULT_*, _PropertyRow, ObsidianExporterDialog
+Linhas ~1750+   Startup: on_main_window_ready(), _register_menu(),
                 _open_importer(), _open_obsidian_exporter()
                 hook: gui_hooks.main_window_did_init.append(on_main_window_ready)
 ```
@@ -93,8 +94,13 @@ Janela Qt com 2 abas:
 
 **Aba "Exportar":**
 ```
+[Template: QComboBox]  ← espelha o combo do Modelo; troca atualiza quick fields
 [Source deck: QComboBox]  ← seleciona baralho existente no Anki
-[QListWidget — cards do baralho: "MC: pergunta → A" ou "Cloze: texto"]
+[Cards: N total (X MC, Y Cloze)  QListWidget h=120]
+─ ⚡ Campos rápidos (só aparece se template tem propriedades marcadas com ⚡) ─
+  [label: QLineEdit]  [+1 se campo for numérico]
+  ...
+─────────────────────────────────────────────────────────────────────────────
 [Vault: QLineEdit (read-only) + Browse...]
 [Output folder: QLineEdit + Browse...]
 [Note title: QLineEdit]
@@ -103,12 +109,26 @@ Janela Qt com 2 abas:
 
 **Aba "Modelo":**
 ```
+[Template: QComboBox] [Novo] [Duplicar] [Excluir] [Salvar]
 [Nome do ficheiro: QLineEdit]  ex: {{title}}.md
 [Variáveis disponíveis: hint label]
-[Propriedades (YAML frontmatter): QTextEdit]
+[Propriedades: QScrollArea com _PropertyRow widgets]
+  cada row: [tipo ▼] [chave] [valor/{{var}}] [⚡] [×]
+  ⚡ = campo rápido — aparece na aba Exportar
+[+ Adicionar propriedade]
 [Conteúdo da nota: QTextEdit]
 [Repor padrões]
 ```
+
+#### _PropertyRow
+- `type_combo` (QComboBox, 110px): Ab Text / ≡ List / # Number / ☑ Checkbox / 📅 Date / ⏰ Datetime
+- `key_edit` (QLineEdit, 120px): nome da propriedade
+- `val_edit` (QLineEdit, stretch): valor ou `{{variável}}`
+- `quick_btn` (QPushButton ⚡, checkable): marca como campo rápido
+- `del_btn` (QPushButton ×, 26px): remove a row
+- `ptype()` → str com key interno do tipo
+- `is_quick()` → bool
+- Serialização: `[key, val, ptype, is_quick]` — backward compat: old `[key, val, ptype]` migra com `is_quick=False`
 
 #### Template variables
 | Variável       | Valor                                                    |
@@ -123,23 +143,41 @@ Janela Qt com 2 abas:
 | `{{cards_callouts}}`| MC + Cloze formatados como callouts Obsidian      |
 | `{{mc_cards_callouts}}`| só MC como callouts `> [!question]`            |
 | `{{cloze_cards_callouts}}`| só Cloze como callouts `> [!info]`          |
+| `{{chave}}`   | qualquer propriedade marcada como ⚡ (quick field)        |
 
 #### Conversão de tags Anki → Obsidian
 `UNIVESP::COM130` → `UNIVESP/COM130` (substitui `::` por `/`, preserva hierarquia nativa do Obsidian)
 
-#### Config persistida (manifest.json / mw.addonManager)
-- `obsidian_vault_path` — caminho do vault
-- `obsidian_last_folder` — última pasta de saída usada
-- `obs_template_filename` — template do nome do ficheiro
-- `obs_template_properties` — template do YAML frontmatter
-- `obs_template_content` — template do corpo da nota
+#### Quick fields
+- Propriedades com `is_quick=True` aparecem como inputs na aba Exportar
+- Campos numéricos ganham botão `+1`
+- Valores salvos em `obs_quick_values[template_name]` e restaurados na próxima abertura
+- Valores injetados em `all_vars` durante o export (sobrescrevem built-ins com mesmo nome)
+- `_build_obsidian_note(..., extra_vars=quick_vals)` — parâmetro opcional
 
-#### Defaults dos templates
+#### Template ↔ Deck auto-link
+- Ao trocar deck, salva `obs_tmpl_deck_link[template_name] = deck_name`
+- Ao trocar template (no combo do Exportar), restaura o deck salvo para aquele template
+
+#### Config persistida (manifest.json / mw.addonManager)
+```json
+{
+  "obsidian_vault_path": "",
+  "obsidian_last_folder": "",
+  "obs_active_template": "Default",
+  "obs_templates": [
+    {
+      "name": "Default",
+      "filename": "{{title}}.md",
+      "prop_rows": [["tags","{{tags}}","list",false], ["created","{{date}}","date",false], ["anki-deck","{{deck}}","text",false]],
+      "content": "{{cards}}"
+    }
+  ],
+  "obs_quick_values": {"Default": {}},
+  "obs_tmpl_deck_link": {"Default": "deck name"}
+}
 ```
-filename:   {{title}}.md
-properties: tags:\n{{tags}}\ncreated: {{date}}\nanki-deck: {{deck}}
-content:    {{cards}}
-```
+- `_load_config` migra automaticamente formato antigo (`obs_prop_rows` flat) para `obs_templates`
 
 ### 5. Botões de prompt (clipboard)
 - "Prompt Múltipla Escolha 📋" e "Prompt Cloze 📋" no topo do ImporterDialog
