@@ -504,8 +504,8 @@ def parse_questions(text: str) -> list:
     # Match the full tail of each question as a single unit so the explanation
     # boundary is captured by the regex rather than a fragile period heuristic.
     tail_re = re.compile(
-        r'Resposta:\s*([A-Ea-e])\s+Explica[çc][aã]o:\s*([^.]+\.)',
-        re.IGNORECASE
+        r'Resposta:\s*([A-Ea-e])\s*\n?\s*Explica[çc][aã]o:\s*(.+?)(?=\n\s*\n|\n\d+[\.\)]|\Z)',
+        re.IGNORECASE | re.DOTALL
     )
     choice_re = re.compile(
         r'\b([A-E])\)\s*(.+?)(?=\s+[A-E]\)|\s*Resposta:|$)', re.DOTALL)
@@ -778,7 +778,12 @@ class ImporterDialog(QDialog):
             self.mc_preview.addItem(
                 f"Q{i}: {snippet}  →  {q.get('answer', '?')}")
         if not questions and self.mc_input.toPlainText().strip():
-            item = QListWidgetItem("No questions detected — check the format")
+            text = self.mc_input.toPlainText()
+            if "Resposta:" not in text and "Explicação:" not in text:
+                msg = "Formato não reconhecido — use o Prompt Múltipla Escolha 📋 no NotebookLM"
+            else:
+                msg = "No questions detected — check the format"
+            item = QListWidgetItem(msg)
             item.setForeground(Qt.GlobalColor.red)
             self.mc_preview.addItem(item)
 
