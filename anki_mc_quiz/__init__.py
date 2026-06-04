@@ -645,7 +645,8 @@ def _render_template(template: str, variables: dict) -> str:
 
 def _build_obsidian_note(title: str, deck_name: str, obs_tags: list,
                           mc_notes: list, cloze_notes: list,
-                          tmpl_properties: str, tmpl_content: str) -> str:
+                          tmpl_properties: str, tmpl_content: str,
+                          extra_vars: dict | None = None) -> str:
     from datetime import date
     tags_yaml = "\n".join(f"  - {t}" for t in obs_tags)
     mc_str = _format_mc_cards(mc_notes) if mc_notes else ""
@@ -668,6 +669,8 @@ def _build_obsidian_note(title: str, deck_name: str, obs_tags: list,
         "mc_cards_callouts": mc_callouts.strip(),
         "cloze_cards_callouts": cloze_callouts.strip(),
     }
+    if extra_vars:
+        variables.update(extra_vars)
     props = _render_template(tmpl_properties, variables)
     content = _render_template(tmpl_content, variables)
     return f"---\n{props}\n---\n\n{content}\n"
@@ -1010,7 +1013,8 @@ _OBS_DEFAULT_TEMPLATES = [
 class _PropertyRow(QWidget):
     """A single key/value row in the properties editor."""
 
-    def __init__(self, key: str = "", value: str = "", ptype: str = "text", parent=None):
+    def __init__(self, key: str = "", value: str = "", ptype: str = "text",
+                 quick: bool = False, parent=None):
         super().__init__(parent)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 2, 0, 2)
@@ -1020,7 +1024,6 @@ class _PropertyRow(QWidget):
         self.type_combo.setFixedWidth(110)
         for label, data in _PROP_TYPES:
             self.type_combo.addItem(label, userData=data)
-        # Select the matching type
         for i, (_, data) in enumerate(_PROP_TYPES):
             if data == ptype:
                 self.type_combo.setCurrentIndex(i)
@@ -1031,17 +1034,38 @@ class _PropertyRow(QWidget):
         self.key_edit.setFixedWidth(120)
         self.val_edit = QLineEdit(value)
         self.val_edit.setPlaceholderText("Valor ou {{variável}}")
+
+        self.quick_btn = QPushButton("⚡")
+        self.quick_btn.setFixedSize(26, 26)
+        self.quick_btn.setCheckable(True)
+        self.quick_btn.setChecked(quick)
+        self.quick_btn.setToolTip("Campo rápido — aparece na aba Exportar")
+        self._update_quick_style()
+        self.quick_btn.toggled.connect(lambda _: self._update_quick_style())
+
         self.del_btn = QPushButton("×")
         self.del_btn.setFixedSize(26, 26)
         self.del_btn.setStyleSheet("font-weight: bold; color: #aaa; border: none;")
         self.del_btn.setToolTip("Remover propriedade")
+
         layout.addWidget(self.type_combo)
         layout.addWidget(self.key_edit)
         layout.addWidget(self.val_edit, stretch=1)
+        layout.addWidget(self.quick_btn)
         layout.addWidget(self.del_btn)
+
+    def _update_quick_style(self) -> None:
+        base = "font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif; font-size: 14px;"
+        if self.quick_btn.isChecked():
+            self.quick_btn.setStyleSheet(base + " border: 1px solid #6c9; border-radius: 3px;")
+        else:
+            self.quick_btn.setStyleSheet(base + " color: #555; border: none;")
 
     def ptype(self) -> str:
         return self.type_combo.currentData()
+
+    def is_quick(self) -> bool:
+        return self.quick_btn.isChecked()
 
 
 class ObsidianExporterDialog(QDialog):
@@ -1075,6 +1099,8 @@ class ObsidianExporterDialog(QDialog):
             "obsidian_last_folder": "",
             "obs_templates": list(_OBS_DEFAULT_TEMPLATES),
             "obs_active_template": _OBS_DEFAULT_TEMPLATES[0]["name"],
+            "obs_quick_values": {},
+            "obs_tmpl_deck_link": {},
         }
         return {**defaults, **raw}
 
@@ -1098,6 +1124,21 @@ class ObsidianExporterDialog(QDialog):
         layout.setSpacing(12)
         layout.setContentsMargins(16, 16, 16, 16)
 
+        # Template selector (mirrors Modelo tab)
+        tmpl_row = QHBoxLayout()
+        tmpl_label = QLabel("Template:")
+        tmpl_label.setFixedWidth(120)
+        self.export_tmpl_combo = QComboBox()
+        for t in self._cfg.get("obs_templates", _OBS_DEFAULT_TEMPLATES):
+            self.export_tmpl_combo.addItem(t["name"])
+        active = self._cfg.get("obs_active_template", _OBS_DEFAULT_TEMPLATES[0]["name"])
+        idx = self.export_tmpl_combo.findText(active)
+        self.export_tmpl_combo.setCurrentIndex(max(0, idx))
+        self.export_tmpl_combo.currentIndexChanged.connect(self._on_export_tmpl_selected)
+        tmpl_row.addWidget(tmpl_label)
+        tmpl_row.addWidget(self.export_tmpl_combo, stretch=1)
+        layout.addLayout(tmpl_row)
+
         # Deck selector
         deck_row = QHBoxLayout()
         deck_label = QLabel("Source deck:")
@@ -1106,6 +1147,7 @@ class ObsidianExporterDialog(QDialog):
         for name in sorted(mw.col.decks.all_names()):
             self.deck_combo.addItem(name)
         self.deck_combo.currentTextChanged.connect(self._load_deck_cards)
+        self.deck_combo.currentTextChanged.connect(self._on_deck_changed)
         deck_row.addWidget(deck_label)
         deck_row.addWidget(self.deck_combo, stretch=1)
         layout.addLayout(deck_row)
@@ -1116,8 +1158,18 @@ class ObsidianExporterDialog(QDialog):
         self.card_list = QListWidget()
         self.card_list.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.card_list.setFixedHeight(140)
+        self.card_list.setFixedHeight(120)
         layout.addWidget(self.card_list)
+
+        # Quick fields section (populated by _refresh_quick_fields)
+        self._quick_frame = QFrame()
+        self._quick_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        self._quick_frame.setStyleSheet("QFrame { border: 1px solid #444; border-radius: 4px; }")
+        self._quick_layout = QVBoxLayout(self._quick_frame)
+        self._quick_layout.setContentsMargins(10, 8, 10, 8)
+        self._quick_layout.setSpacing(6)
+        self._quick_inputs: dict = {}   # key → QLineEdit
+        layout.addWidget(self._quick_frame)
 
         # Vault path
         vault_row = QHBoxLayout()
@@ -1176,8 +1228,9 @@ class ObsidianExporterDialog(QDialog):
         btn_row.addWidget(export_btn)
         layout.addLayout(btn_row)
 
-        # Pre-load first deck
+        # Pre-load first deck and quick fields
         self._load_deck_cards(self.deck_combo.currentText())
+        self._refresh_quick_fields()
         return tab
 
     def _build_template_tab(self) -> QWidget:
@@ -1344,10 +1397,95 @@ class ObsidianExporterDialog(QDialog):
                 rel = path
             self.folder_edit.setText(rel)
 
+    # ── Quick fields ─────────────────────────────────────────────────────────
+
+    def _refresh_quick_fields(self) -> None:
+        """Rebuild the quick-fields section in the Exportar tab from the active template."""
+        # Clear previous widgets
+        while self._quick_layout.count():
+            item = self._quick_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self._quick_inputs.clear()
+
+        tmpl = self._get_active_template()
+        quick_rows = [
+            (key, val, ptype)
+            for key, val, ptype, *rest in tmpl.get("prop_rows", [])
+            if rest and rest[0]
+        ]
+
+        if not quick_rows:
+            self._quick_frame.hide()
+            return
+
+        self._quick_frame.show()
+        tmpl_name = tmpl.get("name", "")
+        saved_vals = self._cfg.get("obs_quick_values", {}).get(tmpl_name, {})
+
+        header = QLabel("⚡ Campos rápidos")
+        header.setStyleSheet("font-weight: bold; color: #6c9; font-size: 11px;")
+        self._quick_layout.addWidget(header)
+
+        for key, *_ in quick_rows:
+            row = QHBoxLayout()
+            lbl = QLabel(key + ":")
+            lbl.setFixedWidth(120)
+            inp = QLineEdit()
+            inp.setText(saved_vals.get(key, ""))
+            inp.setPlaceholderText(key)
+            row.addWidget(lbl)
+            row.addWidget(inp, stretch=1)
+
+            # +1 button for numeric fields
+            current = saved_vals.get(key, "")
+            if current.strip().lstrip("-").replace(".", "", 1).isdigit():
+                plus_btn = QPushButton("+1")
+                plus_btn.setFixedWidth(36)
+                plus_btn.clicked.connect(
+                    lambda _, i=inp: i.setText(
+                        str(int(float(i.text() or "0") + 1))
+                    )
+                )
+                row.addWidget(plus_btn)
+
+            self._quick_layout.addLayout(row)
+            self._quick_inputs[key] = inp
+
+    def _read_quick_field_values(self) -> dict:
+        return {key: inp.text() for key, inp in self._quick_inputs.items()}
+
+    def _on_export_tmpl_selected(self, index: int) -> None:
+        templates = self._get_templates()
+        if not (0 <= index < len(templates)):
+            return
+        new_tmpl = templates[index]
+        new_name = new_tmpl["name"]
+        self._cfg["obs_active_template"] = new_name
+        # Sync Modelo tab combo without triggering its signal
+        if hasattr(self, "tmpl_combo"):
+            self.tmpl_combo.blockSignals(True)
+            self.tmpl_combo.setCurrentIndex(index)
+            self.tmpl_combo.blockSignals(False)
+        # Auto-link: restore saved deck for this template
+        saved_deck = self._cfg.get("obs_tmpl_deck_link", {}).get(new_name)
+        if saved_deck and hasattr(self, "deck_combo"):
+            deck_idx = self.deck_combo.findText(saved_deck)
+            if deck_idx >= 0:
+                self.deck_combo.setCurrentIndex(deck_idx)
+        self._refresh_quick_fields()
+        self._save_config()
+
+    def _on_deck_changed(self, deck_name: str) -> None:
+        tmpl_name = self._cfg.get("obs_active_template", "")
+        if tmpl_name:
+            self._cfg.setdefault("obs_tmpl_deck_link", {})[tmpl_name] = deck_name
+
     # ── Property row helpers ─────────────────────────────────────────────────
 
-    def _add_property_row(self, key: str = "", value: str = "", ptype: str = "text") -> None:
-        row = _PropertyRow(key, value, ptype, parent=self._props_container)
+    def _add_property_row(self, key: str = "", value: str = "", ptype: str = "text",
+                          quick: bool = False) -> None:
+        row = _PropertyRow(key, value, ptype, quick, parent=self._props_container)
         row.del_btn.clicked.connect(lambda: self._remove_property_row(row))
         self._prop_rows.append(row)
         self._props_layout.addWidget(row)
@@ -1360,7 +1498,7 @@ class ObsidianExporterDialog(QDialog):
 
     def _get_prop_rows_data(self) -> list:
         return [
-            [r.key_edit.text().strip(), r.val_edit.text().strip(), r.ptype()]
+            [r.key_edit.text().strip(), r.val_edit.text().strip(), r.ptype(), r.is_quick()]
             for r in self._prop_rows
             if r.key_edit.text().strip()
         ]
@@ -1384,7 +1522,9 @@ class ObsidianExporterDialog(QDialog):
             self._remove_property_row(row)
         for row_data in tmpl.get("prop_rows", _OBS_DEFAULT_PROP_ROWS):
             key, val, *rest = row_data
-            self._add_property_row(key, val, rest[0] if rest else "text")
+            ptype = rest[0] if rest else "text"
+            quick = bool(rest[1]) if len(rest) > 1 else False
+            self._add_property_row(key, val, ptype, quick)
         self.content_edit.setPlainText(tmpl.get("content", _OBS_DEFAULT_CONTENT))
 
     def _read_ui_as_template(self) -> dict:
@@ -1415,6 +1555,11 @@ class ObsidianExporterDialog(QDialog):
         if 0 <= index < len(templates):
             self._cfg["obs_active_template"] = templates[index]["name"]
             self._load_template_into_ui(templates[index])
+            # Sync export combo and refresh quick fields
+            self.export_tmpl_combo.blockSignals(True)
+            self.export_tmpl_combo.setCurrentIndex(index)
+            self.export_tmpl_combo.blockSignals(False)
+            self._refresh_quick_fields()
             self._save_config()
 
     def _on_new_template(self) -> None:
@@ -1435,10 +1580,11 @@ class ObsidianExporterDialog(QDialog):
         }
         self._get_templates().append(new_tmpl)
         self._cfg["obs_active_template"] = name
-        self.tmpl_combo.blockSignals(True)
-        self.tmpl_combo.addItem(name)
-        self.tmpl_combo.setCurrentIndex(self.tmpl_combo.count() - 1)
-        self.tmpl_combo.blockSignals(False)
+        for combo in (self.tmpl_combo, self.export_tmpl_combo):
+            combo.blockSignals(True)
+            combo.addItem(name)
+            combo.setCurrentIndex(combo.count() - 1)
+            combo.blockSignals(False)
         self._load_template_into_ui(new_tmpl)
         self._save_config()
 
@@ -1458,10 +1604,11 @@ class ObsidianExporterDialog(QDialog):
         dup = {**current, "name": name}
         self._get_templates().append(dup)
         self._cfg["obs_active_template"] = name
-        self.tmpl_combo.blockSignals(True)
-        self.tmpl_combo.addItem(name)
-        self.tmpl_combo.setCurrentIndex(self.tmpl_combo.count() - 1)
-        self.tmpl_combo.blockSignals(False)
+        for combo in (self.tmpl_combo, self.export_tmpl_combo):
+            combo.blockSignals(True)
+            combo.addItem(name)
+            combo.setCurrentIndex(combo.count() - 1)
+            combo.blockSignals(False)
         self._load_template_into_ui(dup)
         self._save_config()
 
@@ -1483,11 +1630,13 @@ class ObsidianExporterDialog(QDialog):
         self._cfg["obs_templates"] = [t for t in templates if t["name"] != name]
         new_idx = max(0, idx - 1)
         self._cfg["obs_active_template"] = self._get_templates()[new_idx]["name"]
-        self.tmpl_combo.blockSignals(True)
-        self.tmpl_combo.removeItem(idx)
-        self.tmpl_combo.setCurrentIndex(new_idx)
-        self.tmpl_combo.blockSignals(False)
+        for combo in (self.tmpl_combo, self.export_tmpl_combo):
+            combo.blockSignals(True)
+            combo.removeItem(idx)
+            combo.setCurrentIndex(new_idx)
+            combo.blockSignals(False)
         self._load_template_into_ui(self._get_templates()[new_idx])
+        self._refresh_quick_fields()
         self._save_config()
 
     def _on_reset_template(self) -> None:
@@ -1544,6 +1693,12 @@ class ObsidianExporterDialog(QDialog):
 
         obs_tags = _anki_tags_to_obsidian(self._all_tags)
 
+        # Persist quick field values and inject into template variables
+        quick_vals = self._read_quick_field_values()
+        tmpl_name = self._cfg.get("obs_active_template", "")
+        if quick_vals:
+            self._cfg.setdefault("obs_quick_values", {})[tmpl_name] = quick_vals
+
         # Build properties YAML from structured rows
         from datetime import date as _date
         all_vars = {
@@ -1551,8 +1706,9 @@ class ObsidianExporterDialog(QDialog):
             "deck": deck_name,
             "tags": "\n".join(f"  - {t}" for t in obs_tags),
         }
+        all_vars.update(quick_vals)  # quick fields override built-ins if same name
         yaml_lines = []
-        for key, val_tmpl, ptype in self._get_prop_rows_data():
+        for key, val_tmpl, ptype, *_ in self._get_prop_rows_data():
             rendered = _render_template(val_tmpl, all_vars)
             if ptype == "list":
                 yaml_lines.append(f"{key}:")
@@ -1571,6 +1727,7 @@ class ObsidianExporterDialog(QDialog):
             title=title, deck_name=deck_name, obs_tags=obs_tags,
             mc_notes=self._mc_notes, cloze_notes=self._cloze_notes,
             tmpl_properties=tmpl_props, tmpl_content=tmpl_content,
+            extra_vars=quick_vals,
         )
 
         try:
