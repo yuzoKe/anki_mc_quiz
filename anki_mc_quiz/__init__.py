@@ -586,11 +586,12 @@ def parse_cloze(text: str) -> list:
 # ---------------------------------------------------------------------------
 
 def _anki_tags_to_obsidian(tags_list: list) -> list:
+    """Convert Anki tags to Obsidian format, preserving :: hierarchy as /."""
     result = []
     for tag in tags_list:
-        for part in tag.split("::"):
-            if part and part not in result:
-                result.append(part)
+        obs_tag = tag.replace("::", "/")
+        if obs_tag and obs_tag not in result:
+            result.append(obs_tag)
     return result
 
 
@@ -615,6 +616,27 @@ def _format_cloze_cards(cloze_notes: list) -> str:
     return body
 
 
+def _format_mc_callouts(mc_notes: list) -> str:
+    body = "## Questões (Múltipla Escolha)\n\n"
+    for i, q in enumerate(mc_notes, 1):
+        body += f"> [!question] {i}. {q.get('question', '')}\n"
+        for letter in "ABCDE":
+            if q.get(letter):
+                body += f"> {letter}) {q[letter]}\n"
+        ans = q.get("answer", "")
+        expl = q.get("explanation", "")
+        body += f">\n> **Resposta: {ans}**"
+        body += f" — {expl}\n\n" if expl else "\n\n"
+    return body
+
+
+def _format_cloze_callouts(cloze_notes: list) -> str:
+    body = "## Cloze\n\n"
+    for c in cloze_notes:
+        body += f"> [!info]\n> {c}\n\n"
+    return body
+
+
 def _render_template(template: str, variables: dict) -> str:
     for key, value in variables.items():
         template = template.replace("{{" + key + "}}", value)
@@ -628,8 +650,12 @@ def _build_obsidian_note(title: str, deck_name: str, obs_tags: list,
     tags_yaml = "\n".join(f"  - {t}" for t in obs_tags)
     mc_str = _format_mc_cards(mc_notes) if mc_notes else ""
     cloze_str = _format_cloze_cards(cloze_notes) if cloze_notes else ""
+    mc_callouts = _format_mc_callouts(mc_notes) if mc_notes else ""
+    cloze_callouts = _format_cloze_callouts(cloze_notes) if cloze_notes else ""
     sep = "\n" if mc_str and cloze_str else ""
     cards_str = (mc_str + sep + cloze_str).strip()
+    sep_c = "\n" if mc_callouts and cloze_callouts else ""
+    cards_callouts_str = (mc_callouts + sep_c + cloze_callouts).strip()
     variables = {
         "title": title,
         "date": date.today().isoformat(),
@@ -638,6 +664,9 @@ def _build_obsidian_note(title: str, deck_name: str, obs_tags: list,
         "cards": cards_str,
         "mc_cards": mc_str.strip(),
         "cloze_cards": cloze_str.strip(),
+        "cards_callouts": cards_callouts_str,
+        "mc_cards_callouts": mc_callouts.strip(),
+        "cloze_cards_callouts": cloze_callouts.strip(),
     }
     props = _render_template(tmpl_properties, variables)
     content = _render_template(tmpl_content, variables)
@@ -1157,8 +1186,9 @@ class ObsidianExporterDialog(QDialog):
         layout.addLayout(fn_row)
 
         vars_hint = QLabel(
-            "Variáveis: {{title}}  {{date}}  {{deck}}  "
-            "{{tags}}  {{cards}}  {{mc_cards}}  {{cloze_cards}}"
+            "Variáveis: {{title}}  {{date}}  {{deck}}  {{tags}}\n"
+            "{{cards}}  {{mc_cards}}  {{cloze_cards}}\n"
+            "{{cards_callouts}}  {{mc_cards_callouts}}  {{cloze_cards_callouts}}"
         )
         vars_hint.setStyleSheet("color: gray; font-size: 11px;")
         vars_hint.setWordWrap(True)

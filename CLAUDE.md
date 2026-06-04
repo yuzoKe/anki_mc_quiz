@@ -120,9 +120,12 @@ Janela Qt com 2 abas:
 | `{{cards}}`   | corpo completo (MC + Cloze em markdown)                  |
 | `{{mc_cards}}`| só questões MC                                           |
 | `{{cloze_cards}}`| só cards Cloze                                        |
+| `{{cards_callouts}}`| MC + Cloze formatados como callouts Obsidian      |
+| `{{mc_cards_callouts}}`| só MC como callouts `> [!question]`            |
+| `{{cloze_cards_callouts}}`| só Cloze como callouts `> [!info]`          |
 
 #### Conversão de tags Anki → Obsidian
-`UNIVESP::COM130` → `UNIVESP`, `COM130` (split em `::`, flat, deduplicado)
+`UNIVESP::COM130` → `UNIVESP/COM130` (substitui `::` por `/`, preserva hierarquia nativa do Obsidian)
 
 #### Config persistida (manifest.json / mw.addonManager)
 - `obsidian_vault_path` — caminho do vault
