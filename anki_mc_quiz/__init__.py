@@ -952,34 +952,60 @@ class ImporterDialog(QDialog):
 # ---------------------------------------------------------------------------
 
 _OBS_DEFAULT_FILENAME = "{{title}}.md"
-_OBS_DEFAULT_PROP_ROWS = [
-    ["tags", "{{tags}}"],
-    ["created", "{{date}}"],
-    ["anki-deck", "{{deck}}"],
-]
 _OBS_DEFAULT_CONTENT = "{{cards}}"
+
+# (label, internal key) — order matches Obsidian's property type list
+_PROP_TYPES = [
+    ("Ab  Text",      "text"),
+    ("≡   List",      "list"),
+    ("#   Number",    "number"),
+    ("☑   Checkbox",  "checkbox"),
+    ("📅  Date",      "date"),
+    ("⏰  Datetime",  "datetime"),
+]
+
+_OBS_DEFAULT_PROP_ROWS = [
+    ["tags",      "{{tags}}",  "list"],
+    ["created",   "{{date}}",  "date"],
+    ["anki-deck", "{{deck}}",  "text"],
+]
 
 
 class _PropertyRow(QWidget):
     """A single key/value row in the properties editor."""
 
-    def __init__(self, key: str = "", value: str = "", parent=None):
+    def __init__(self, key: str = "", value: str = "", ptype: str = "text", parent=None):
         super().__init__(parent)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 2, 0, 2)
         layout.setSpacing(6)
+
+        self.type_combo = QComboBox()
+        self.type_combo.setFixedWidth(110)
+        for label, data in _PROP_TYPES:
+            self.type_combo.addItem(label, userData=data)
+        # Select the matching type
+        for i, (_, data) in enumerate(_PROP_TYPES):
+            if data == ptype:
+                self.type_combo.setCurrentIndex(i)
+                break
+
         self.key_edit = QLineEdit(key)
         self.key_edit.setPlaceholderText("Propriedade")
-        self.key_edit.setFixedWidth(130)
+        self.key_edit.setFixedWidth(120)
         self.val_edit = QLineEdit(value)
         self.val_edit.setPlaceholderText("Valor ou {{variável}}")
         self.del_btn = QPushButton("×")
         self.del_btn.setFixedSize(26, 26)
         self.del_btn.setStyleSheet("font-weight: bold; color: #aaa; border: none;")
         self.del_btn.setToolTip("Remover propriedade")
+        layout.addWidget(self.type_combo)
         layout.addWidget(self.key_edit)
         layout.addWidget(self.val_edit, stretch=1)
         layout.addWidget(self.del_btn)
+
+    def ptype(self) -> str:
+        return self.type_combo.currentData()
 
 
 class ObsidianExporterDialog(QDialog):
@@ -1158,8 +1184,9 @@ class ObsidianExporterDialog(QDialog):
         scroll.setFrameShape(scroll.Shape.StyledPanel)
         layout.addWidget(scroll)
 
-        for key, val in self._cfg.get("obs_prop_rows", _OBS_DEFAULT_PROP_ROWS):
-            self._add_property_row(key, val)
+        for row_data in self._cfg.get("obs_prop_rows", _OBS_DEFAULT_PROP_ROWS):
+            key, val, *rest = row_data
+            self._add_property_row(key, val, rest[0] if rest else "text")
 
         add_prop_btn = QPushButton("+ Adicionar propriedade")
         add_prop_btn.setFlat(True)
@@ -1254,8 +1281,8 @@ class ObsidianExporterDialog(QDialog):
 
     # ── Property row helpers ─────────────────────────────────────────────────
 
-    def _add_property_row(self, key: str = "", value: str = "") -> None:
-        row = _PropertyRow(key, value, parent=self._props_container)
+    def _add_property_row(self, key: str = "", value: str = "", ptype: str = "text") -> None:
+        row = _PropertyRow(key, value, ptype, parent=self._props_container)
         row.del_btn.clicked.connect(lambda: self._remove_property_row(row))
         self._prop_rows.append(row)
         self._props_layout.addWidget(row)
@@ -1268,7 +1295,7 @@ class ObsidianExporterDialog(QDialog):
 
     def _get_prop_rows_data(self) -> list:
         return [
-            [r.key_edit.text().strip(), r.val_edit.text().strip()]
+            [r.key_edit.text().strip(), r.val_edit.text().strip(), r.ptype()]
             for r in self._prop_rows
             if r.key_edit.text().strip()
         ]
@@ -1279,8 +1306,8 @@ class ObsidianExporterDialog(QDialog):
         self.filename_edit.setText(_OBS_DEFAULT_FILENAME)
         for row in list(self._prop_rows):
             self._remove_property_row(row)
-        for key, val in _OBS_DEFAULT_PROP_ROWS:
-            self._add_property_row(key, val)
+        for key, val, ptype in _OBS_DEFAULT_PROP_ROWS:
+            self._add_property_row(key, val, ptype)
         self.content_edit.setPlainText(_OBS_DEFAULT_CONTENT)
 
     # ── Export ───────────────────────────────────────────────────────────────
@@ -1338,11 +1365,17 @@ class ObsidianExporterDialog(QDialog):
             "tags": "\n".join(f"  - {t}" for t in obs_tags),
         }
         yaml_lines = []
-        for key, val_tmpl in self._get_prop_rows_data():
+        for key, val_tmpl, ptype in self._get_prop_rows_data():
             rendered = _render_template(val_tmpl, all_vars)
-            if "\n" in rendered:
+            if ptype == "list":
                 yaml_lines.append(f"{key}:")
-                yaml_lines.append(rendered)
+                if "\n" in rendered:
+                    yaml_lines.append(rendered)
+                else:
+                    for item in (v.strip() for v in rendered.split(",") if v.strip()):
+                        yaml_lines.append(f"  - {item}")
+            elif ptype == "checkbox":
+                yaml_lines.append(f"{key}: {'true' if rendered.lower() in ('true','yes','1') else 'false'}")
             else:
                 yaml_lines.append(f"{key}: {rendered}")
         tmpl_props = "\n".join(yaml_lines)
