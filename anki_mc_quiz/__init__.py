@@ -1000,8 +1000,8 @@ class ObsidianExporterDialog(QDialog):
     def _build_export_tab(self) -> QWidget:
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(10)
-        layout.setContentsMargins(0, 12, 0, 0)
+        layout.setSpacing(12)
+        layout.setContentsMargins(16, 16, 16, 16)
 
         # Deck selector
         deck_row = QHBoxLayout()
@@ -1092,8 +1092,8 @@ class ObsidianExporterDialog(QDialog):
     def _build_template_tab(self) -> QWidget:
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(10)
-        layout.setContentsMargins(0, 12, 0, 0)
+        layout.setSpacing(12)
+        layout.setContentsMargins(16, 16, 16, 16)
 
         # Filename template
         fn_row = QHBoxLayout()
