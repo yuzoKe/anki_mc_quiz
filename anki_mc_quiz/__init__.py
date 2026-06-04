@@ -552,12 +552,24 @@ def parse_questions(text: str) -> list:
 
 
 def parse_cloze(text: str) -> list:
-    """Returns non-empty lines that contain at least one {{cN::}} cloze marker."""
-    return [
-        line.strip()
-        for line in text.splitlines()
-        if line.strip() and "{{c" in line
-    ]
+    """Returns individual cloze sentences containing at least one {{cN::}} marker.
+
+    Handles two layouts:
+    - One card per line (standard NotebookLM output)
+    - Multiple sentences concatenated in a paragraph (split on '. {{c' boundaries)
+    """
+    results = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or "{{c" not in line:
+            continue
+        if line.count("{{c") > 1:
+            # Split paragraph into individual sentences at '. {{c' boundaries
+            parts = re.split(r'(?<=\.)\s+(?=\{\{c)', line)
+            results.extend(p.strip() for p in parts if "{{c" in p)
+        else:
+            results.append(line)
+    return results
 
 
 # ---------------------------------------------------------------------------
