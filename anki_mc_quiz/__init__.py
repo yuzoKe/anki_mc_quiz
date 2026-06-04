@@ -12,7 +12,7 @@ from aqt.qt import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QTextEdit, QComboBox, QPushButton, QTabWidget, QWidget,
     QListWidget, QAbstractItemView, QListWidgetItem,
-    QLineEdit, QFileDialog, QMessageBox,
+    QLineEdit, QFileDialog, QMessageBox, QCheckBox,
     QScrollArea, QFrame, QApplication, Qt
 )
 import re
@@ -1032,16 +1032,14 @@ class _PropertyRow(QWidget):
         self.key_edit = QLineEdit(key)
         self.key_edit.setPlaceholderText("Propriedade")
         self.key_edit.setFixedWidth(120)
+
         self.val_edit = QLineEdit(value)
         self.val_edit.setPlaceholderText("Valor ou {{variável}}")
 
-        self.quick_btn = QPushButton("⚡")
-        self.quick_btn.setFixedSize(26, 26)
-        self.quick_btn.setCheckable(True)
-        self.quick_btn.setChecked(quick)
-        self.quick_btn.setToolTip("Campo rápido — aparece na aba Exportar")
-        self._update_quick_style()
-        self.quick_btn.toggled.connect(lambda _: self._update_quick_style())
+        self.quick_check = QCheckBox("Q")
+        self.quick_check.setChecked(quick)
+        self.quick_check.setToolTip("Campo rápido — aparece na aba Exportar para edição rápida")
+        self.quick_check.setFixedWidth(32)
 
         self.del_btn = QPushButton("×")
         self.del_btn.setFixedSize(26, 26)
@@ -1051,21 +1049,14 @@ class _PropertyRow(QWidget):
         layout.addWidget(self.type_combo)
         layout.addWidget(self.key_edit)
         layout.addWidget(self.val_edit, stretch=1)
-        layout.addWidget(self.quick_btn)
+        layout.addWidget(self.quick_check)
         layout.addWidget(self.del_btn)
-
-    def _update_quick_style(self) -> None:
-        base = "font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif; font-size: 14px;"
-        if self.quick_btn.isChecked():
-            self.quick_btn.setStyleSheet(base + " border: 1px solid #6c9; border-radius: 3px;")
-        else:
-            self.quick_btn.setStyleSheet(base + " color: #555; border: none;")
 
     def ptype(self) -> str:
         return self.type_combo.currentData()
 
     def is_quick(self) -> bool:
-        return self.quick_btn.isChecked()
+        return self.quick_check.isChecked()
 
 
 class ObsidianExporterDialog(QDialog):
@@ -1423,7 +1414,7 @@ class ObsidianExporterDialog(QDialog):
         tmpl_name = tmpl.get("name", "")
         saved_vals = self._cfg.get("obs_quick_values", {}).get(tmpl_name, {})
 
-        header = QLabel("⚡ Campos rápidos")
+        header = QLabel("Campos rapidos (Q):")
         header.setStyleSheet("font-weight: bold; color: #6c9; font-size: 11px;")
         self._quick_layout.addWidget(header)
 
