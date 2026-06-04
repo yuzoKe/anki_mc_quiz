@@ -1130,11 +1130,11 @@ class ObsidianExporterDialog(QDialog):
             if "Question" in field_names:
                 q = {
                     "question": note["Question"],
-                    "A": note.get("A", ""), "B": note.get("B", ""),
-                    "C": note.get("C", ""), "D": note.get("D", ""),
-                    "E": note.get("E", ""),
+                    "A": note["A"], "B": note["B"],
+                    "C": note["C"], "D": note["D"],
+                    "E": note["E"],
                     "answer": note["Answer"],
-                    "explanation": note.get("Explanation", ""),
+                    "explanation": note["Explanation"],
                 }
                 self._mc_notes.append(q)
                 self.card_list.addItem(
