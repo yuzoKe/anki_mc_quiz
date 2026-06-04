@@ -1205,13 +1205,9 @@ class ObsidianExporterDialog(QDialog):
         self.tmpl_combo.setCurrentIndex(max(0, idx))
 
         btn_new = QPushButton("Novo")
-        btn_new.setFixedWidth(55)
         btn_dup = QPushButton("Duplicar")
-        btn_dup.setFixedWidth(72)
         btn_del = QPushButton("Excluir")
-        btn_del.setFixedWidth(65)
         btn_save = QPushButton("Salvar")
-        btn_save.setFixedWidth(60)
 
         tmpl_row.addWidget(self.tmpl_combo, stretch=1)
         tmpl_row.addWidget(btn_new)
