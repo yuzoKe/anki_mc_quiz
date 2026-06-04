@@ -7,5 +7,12 @@
     "homepage": "https://github.com/eduardokubota/anki-mc-quiz",
     "tags": ["study", "quiz", "multiple choice"],
     "conflicts": [],
-    "mod": 0
+    "mod": 0,
+    "config": {
+        "obsidian_vault_path": "",
+        "obsidian_last_folder": "",
+        "obs_template_filename": "{{title}}.md",
+        "obs_template_properties": "tags:\n{{tags}}\ncreated: {{date}}\nanki-deck: {{deck}}",
+        "obs_template_content": "{{cards}}"
+    }
 }

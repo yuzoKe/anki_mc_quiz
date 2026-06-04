@@ -12,6 +12,7 @@ from aqt.qt import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QTextEdit, QComboBox, QPushButton, QTabWidget, QWidget,
     QListWidget, QAbstractItemView, QListWidgetItem,
+    QLineEdit, QFileDialog,
     QApplication, Qt
 )
 import re
@@ -557,6 +558,69 @@ def parse_cloze(text: str) -> list:
         for line in text.splitlines()
         if line.strip() and "{{c" in line
     ]
+
+
+# ---------------------------------------------------------------------------
+# Obsidian export helpers
+# ---------------------------------------------------------------------------
+
+def _anki_tags_to_obsidian(tags_list: list) -> list:
+    result = []
+    for tag in tags_list:
+        for part in tag.split("::"):
+            if part and part not in result:
+                result.append(part)
+    return result
+
+
+def _format_mc_cards(mc_notes: list) -> str:
+    body = "## Questões (Múltipla Escolha)\n\n"
+    for i, q in enumerate(mc_notes, 1):
+        body += f"{i}. {q.get('question', '')}\n"
+        for letter in "ABCDE":
+            if q.get(letter):
+                body += f"   {letter}) {q[letter]}\n"
+        ans = q.get("answer", "")
+        expl = q.get("explanation", "")
+        body += f"   **Resposta: {ans}**"
+        body += f" — {expl}\n\n" if expl else "\n\n"
+    return body
+
+
+def _format_cloze_cards(cloze_notes: list) -> str:
+    body = "## Cloze\n\n"
+    for c in cloze_notes:
+        body += f"- {c}\n"
+    return body
+
+
+def _render_template(template: str, variables: dict) -> str:
+    for key, value in variables.items():
+        template = template.replace("{{" + key + "}}", value)
+    return template
+
+
+def _build_obsidian_note(title: str, deck_name: str, obs_tags: list,
+                          mc_notes: list, cloze_notes: list,
+                          tmpl_properties: str, tmpl_content: str) -> str:
+    from datetime import date
+    tags_yaml = "\n".join(f"  - {t}" for t in obs_tags)
+    mc_str = _format_mc_cards(mc_notes) if mc_notes else ""
+    cloze_str = _format_cloze_cards(cloze_notes) if cloze_notes else ""
+    sep = "\n" if mc_str and cloze_str else ""
+    cards_str = (mc_str + sep + cloze_str).strip()
+    variables = {
+        "title": title,
+        "date": date.today().isoformat(),
+        "deck": deck_name,
+        "tags": tags_yaml,
+        "cards": cards_str,
+        "mc_cards": mc_str.strip(),
+        "cloze_cards": cloze_str.strip(),
+    }
+    props = _render_template(tmpl_properties, variables)
+    content = _render_template(tmpl_content, variables)
+    return f"---\n{props}\n---\n\n{content}\n"
 
 
 # ---------------------------------------------------------------------------
