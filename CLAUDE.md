@@ -169,6 +169,19 @@ Regras: numeração sequencial, letras maiúsculas, uma linha em branco entre qu
 **PROMPT CLOZE:**
 ```
 Crie um Relatório Personalizado transformando todos os conceitos das fontes em flashcards no formato Cloze.
-Formato: {{c1::termo}} é/são [contexto].
-Regras: uma linha por card, apenas {{c1::}}, sem numeração, sem duplicatas.
+
+Formato obrigatório — cada card deve ocupar exatamente UMA linha isolada:
+{{c1::termo ou conceito}} é/são [definição ou contexto em uma frase].
+
+Regras:
+- Uma linha por card, seguida de uma linha em branco
+- Nunca agrupe vários cards no mesmo parágrafo
+- Use apenas {{c1::}}, sem {{c2::}} ou outras numerações
+- Sem numeração, títulos, subtítulos ou texto introdutório
+- Sem duplicatas
+
+Exemplo correto:
+{{c1::TCP/IP}} é o conjunto de protocolos que governa a transmissão de dados na internet.
+
+{{c1::DNS}} é o sistema responsável por traduzir nomes de domínio em endereços IP.
 ```

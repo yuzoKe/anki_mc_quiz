@@ -44,9 +44,18 @@ PROMPT_MC = (
 
 PROMPT_CLOZE = (
     "Crie um Relatório Personalizado transformando todos os conceitos das fontes "
-    "em flashcards no formato Cloze.\n"
-    "Formato: {{c1::termo}} é/são [contexto].\n"
-    "Regras: uma linha por card, apenas {{c1::}}, sem numeração, sem duplicatas."
+    "em flashcards no formato Cloze.\n\n"
+    "Formato obrigatório — cada card deve ocupar exatamente UMA linha isolada:\n"
+    "{{c1::termo ou conceito}} é/são [definição ou contexto em uma frase].\n\n"
+    "Regras:\n"
+    "- Uma linha por card, seguida de uma linha em branco\n"
+    "- Nunca agrupe vários cards no mesmo parágrafo\n"
+    "- Use apenas {{c1::}}, sem {{c2::}} ou outras numerações\n"
+    "- Sem numeração, títulos, subtítulos ou texto introdutório\n"
+    "- Sem duplicatas\n\n"
+    "Exemplo correto:\n"
+    "{{c1::TCP/IP}} é o conjunto de protocolos que governa a transmissão de dados na internet.\n\n"
+    "{{c1::DNS}} é o sistema responsável por traduzir nomes de domínio em endereços IP."
 )
 
 # These are the fields the user will fill in when creating a card.
