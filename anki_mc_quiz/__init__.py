@@ -931,7 +931,9 @@ class ImporterDialog(QDialog):
                 skipped += 1
                 continue
             note = mw.col.new_note(cloze_model)
-            note.fields[0] = card_text
+            # Escape HTML so tags like <tr> are displayed literally, not stripped
+            safe_text = card_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            note.fields[0] = safe_text
             note.note_type()["did"] = deck_id
             note.tags = self._get_tags()
             mw.col.add_note(note, deck_id)
