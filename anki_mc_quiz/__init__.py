@@ -1151,11 +1151,13 @@ class ObsidianExporterDialog(QDialog):
         tag_set: set = set()
 
         note_ids = mw.col.find_notes(f'"deck:{deck_name}"')
+        counter = 0
         for nid in note_ids:
             note = mw.col.get_note(nid)
             for tag in note.tags:
                 tag_set.add(tag)
             field_names = [f["name"] for f in note.note_type()["flds"]]
+            counter += 1
             if "Question" in field_names:
                 q = {
                     "question": note["Question"],
@@ -1167,11 +1169,11 @@ class ObsidianExporterDialog(QDialog):
                 }
                 self._mc_notes.append(q)
                 self.card_list.addItem(
-                    f"MC: {note['Question'][:65]}  → {note['Answer']}")
+                    f"{counter}) MC: {note['Question'][:60]}  → {note['Answer']}")
             else:
                 text = note.fields[0]
                 self._cloze_notes.append(text)
-                self.card_list.addItem(f"Cloze: {text[:70]}")
+                self.card_list.addItem(f"{counter}) Cloze: {text[:65]}")
 
         self._all_tags = list(tag_set)
         mc_count = len(self._mc_notes)
