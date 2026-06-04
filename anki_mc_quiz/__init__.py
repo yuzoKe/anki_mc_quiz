@@ -1016,7 +1016,8 @@ class ObsidianExporterDialog(QDialog):
         layout.addLayout(deck_row)
 
         # Card preview list
-        layout.addWidget(QLabel("Cards:"))
+        self.cards_label = QLabel("Cards:")
+        layout.addWidget(self.cards_label)
         self.card_list = QListWidget()
         self.card_list.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -1173,6 +1174,12 @@ class ObsidianExporterDialog(QDialog):
                 self.card_list.addItem(f"Cloze: {text[:70]}")
 
         self._all_tags = list(tag_set)
+        mc_count = len(self._mc_notes)
+        cloze_count = len(self._cloze_notes)
+        self.cards_label.setText(
+            f"Cards: {mc_count + cloze_count} total "
+            f"({mc_count} MC, {cloze_count} Cloze)"
+        )
 
     # ── Browse handlers ──────────────────────────────────────────────────────
 
