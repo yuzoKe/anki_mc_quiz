@@ -11,10 +11,12 @@
 from aqt.qt import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QTextEdit, QComboBox, QPushButton, QTabWidget, QWidget,
+    QListWidget, QAbstractItemView, QListWidgetItem,
     QApplication, Qt
 )
 import re
 from aqt import mw, gui_hooks
+from aqt.tagedit import TagEdit
 
 
 # ---------------------------------------------------------------------------
@@ -486,8 +488,15 @@ def parse_questions(text: str) -> list:
     Returns list of dicts with keys: question, A, B, C, D, E, answer, explanation
     """
 
-    # Strip leading all-caps report title (lines with no ASCII lowercase letters)
-    text = re.sub(r'^(?:[^\na-z]*\n)+\s*', '', text.strip())
+    text = text.strip()
+    # Strip preamble (title/heading) before the first numbered question.
+    # If a "1." or "1)" exists, discard everything before it.
+    # Fallback for unnumbered format: strip leading all-caps lines.
+    numbered = re.search(r'(?m)^1[\.\)]', text)
+    if numbered:
+        text = text[numbered.start():]
+    else:
+        text = re.sub(r'^(?:[^\na-z]*\n)+\s*', '', text)
 
     questions = []
 
@@ -526,7 +535,8 @@ def parse_questions(text: str) -> list:
         if i == 0:
             raw_question = text[:choices_start].strip()
         else:
-            raw_question = text[tail_matches[i - 1].end():choices_start].strip()
+            raw_question = text[tail_matches[i - 1].end()
+                                                        :choices_start].strip()
 
         # Strip leading question numbers like "1. " or "1) "
         raw_question = re.sub(r'^\d+[\.\)]\s*', '', raw_question)
@@ -571,7 +581,7 @@ class ImporterDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Import from NotebookLM")
         self.setMinimumWidth(560)
-        self.setMinimumHeight(480)
+        self.setMinimumHeight(620)
         self._build_ui()
 
     def _build_ui(self):
@@ -582,14 +592,17 @@ class ImporterDialog(QDialog):
         # ── Prompt copy buttons ───────────────────────────────────────────
         prompt_row = QHBoxLayout()
         btn_copy_mc = QPushButton("Prompt Múltipla Escolha  📋")
-        btn_copy_mc.setToolTip("Copia o prompt de múltipla escolha para o clipboard")
+        btn_copy_mc.setToolTip(
+            "Copia o prompt de múltipla escolha para o clipboard")
         btn_copy_mc.clicked.connect(
-            lambda: self._copy_to_clipboard(PROMPT_MC, btn_copy_mc, "Prompt Múltipla Escolha  📋")
+            lambda: self._copy_to_clipboard(
+                PROMPT_MC, btn_copy_mc, "Prompt Múltipla Escolha  📋")
         )
         btn_copy_cloze = QPushButton("Prompt Cloze  📋")
         btn_copy_cloze.setToolTip("Copia o prompt Cloze para o clipboard")
         btn_copy_cloze.clicked.connect(
-            lambda: self._copy_to_clipboard(PROMPT_CLOZE, btn_copy_cloze, "Prompt Cloze  📋")
+            lambda: self._copy_to_clipboard(
+                PROMPT_CLOZE, btn_copy_cloze, "Prompt Cloze  📋")
         )
         prompt_row.addWidget(btn_copy_mc)
         prompt_row.addWidget(btn_copy_cloze)
@@ -611,6 +624,16 @@ class ImporterDialog(QDialog):
         deck_row.addWidget(deck_label)
         deck_row.addWidget(self.deck_combo, stretch=1)
         layout.addLayout(deck_row)
+
+        # ── Tags input (shared) ───────────────────────────────────────────
+        tags_row = QHBoxLayout()
+        tags_label = QLabel("Etiquetas:")
+        tags_label.setFixedWidth(160)
+        self.tags_input = TagEdit(self)
+        self.tags_input.setCol(mw.col)
+        tags_row.addWidget(tags_label)
+        tags_row.addWidget(self.tags_input, stretch=1)
+        layout.addLayout(tags_row)
 
         # ── Buttons (shared) ──────────────────────────────────────────────
         btn_row = QHBoxLayout()
@@ -643,8 +666,17 @@ class ImporterDialog(QDialog):
         instructions.setStyleSheet(self._INSTRUCTION_STYLE)
         layout.addWidget(instructions)
         self.mc_input = QTextEdit()
-        self.mc_input.setPlaceholderText("Paste your NotebookLM quiz text here...")
+        self.mc_input.setPlaceholderText(
+            "Paste your NotebookLM quiz text here...")
         layout.addWidget(self.mc_input)
+
+        layout.addWidget(QLabel("Preview:"))
+        self.mc_preview = QListWidget()
+        self.mc_preview.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.mc_preview.setFixedHeight(110)
+        self.mc_input.textChanged.connect(self._update_mc_preview)
+        layout.addWidget(self.mc_preview)
         return tab
 
     def _build_cloze_tab(self):
@@ -661,9 +693,51 @@ class ImporterDialog(QDialog):
         instructions.setStyleSheet(self._INSTRUCTION_STYLE)
         layout.addWidget(instructions)
         self.cloze_input = QTextEdit()
-        self.cloze_input.setPlaceholderText("Paste your NotebookLM Cloze text here...")
+        self.cloze_input.setPlaceholderText(
+            "Paste your NotebookLM Cloze text here...")
         layout.addWidget(self.cloze_input)
+
+        layout.addWidget(QLabel("Preview:"))
+        self.cloze_preview = QListWidget()
+        self.cloze_preview.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.cloze_preview.setFixedHeight(110)
+        self.cloze_input.textChanged.connect(self._update_cloze_preview)
+        layout.addWidget(self.cloze_preview)
         return tab
+
+    def _update_mc_preview(self):
+        self.mc_preview.clear()
+        questions = parse_questions(self.mc_input.toPlainText())
+        for i, q in enumerate(questions, 1):
+            snippet = q.get("question", "")[:70]
+            self.mc_preview.addItem(
+                f"Q{i}: {snippet}  →  {q.get('answer', '?')}")
+        if not questions and self.mc_input.toPlainText().strip():
+            item = QListWidgetItem("No questions detected — check the format")
+            item.setForeground(Qt.GlobalColor.red)
+            self.mc_preview.addItem(item)
+
+    def _update_cloze_preview(self):
+        self.cloze_preview.clear()
+        cards = parse_cloze(self.cloze_input.toPlainText())
+        for card in cards:
+            self.cloze_preview.addItem(card[:80])
+        if not cards and self.cloze_input.toPlainText().strip():
+            item = QListWidgetItem("No Cloze cards detected — check the format")
+            item.setForeground(Qt.GlobalColor.red)
+            self.cloze_preview.addItem(item)
+
+    def _get_tags(self) -> list:
+        return mw.col.tags.split(self.tags_input.text())
+
+    def _is_duplicate_mc(self, question: str) -> bool:
+        query = f'"note:{NOTE_TYPE_NAME}" "Question:{question}"'
+        return bool(mw.col.find_notes(query))
+
+    def _is_duplicate_cloze(self, card_text: str) -> bool:
+        query = f'"note:Cloze" "Text:{card_text}"'
+        return bool(mw.col.find_notes(query))
 
     def _copy_to_clipboard(self, text, btn, original_label):
         QApplication.clipboard().setText(text)
@@ -702,11 +776,16 @@ class ImporterDialog(QDialog):
 
         model = mw.col.models.by_name(NOTE_TYPE_NAME)
         if not model:
-            showWarning("Multiple Choice Quiz note type not found. Please restart Anki.")
+            showWarning(
+                "Multiple Choice Quiz note type not found. Please restart Anki.")
             return
 
         created = 0
+        skipped = 0
         for q in questions:
+            if self._is_duplicate_mc(q.get("question", "")):
+                skipped += 1
+                continue
             note = mw.col.new_note(model)
             note["Question"] = q.get("question", "")
             note["A"] = q.get("A", "")
@@ -717,11 +796,15 @@ class ImporterDialog(QDialog):
             note["Answer"] = q.get("answer", "")
             note["Explanation"] = q.get("explanation", "")
             note.note_type()["did"] = deck_id
+            note.tags = self._get_tags()
             mw.col.add_note(note, deck_id)
             created += 1
 
         mw.reset()
-        showInfo(f"{created} card(s) added to '{deck_name}'.")
+        msg = f"{created} card(s) added to '{deck_name}'."
+        if skipped:
+            msg += f" {skipped} duplicate(s) skipped."
+        showInfo(msg)
         self.accept()
 
     def _import_cloze(self):
@@ -752,15 +835,23 @@ class ImporterDialog(QDialog):
         mw.col.decks.select(deck_id)
 
         created = 0
+        skipped = 0
         for card_text in cards:
+            if self._is_duplicate_cloze(card_text):
+                skipped += 1
+                continue
             note = mw.col.new_note(cloze_model)
             note.fields[0] = card_text
             note.note_type()["did"] = deck_id
+            note.tags = self._get_tags()
             mw.col.add_note(note, deck_id)
             created += 1
 
         mw.reset()
-        showInfo(f"{created} Cloze card(s) added to '{deck_name}'.")
+        msg = f"{created} Cloze card(s) added to '{deck_name}'."
+        if skipped:
+            msg += f" {skipped} duplicate(s) skipped."
+        showInfo(msg)
         self.accept()
 
 

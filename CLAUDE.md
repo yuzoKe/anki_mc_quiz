@@ -16,6 +16,11 @@ Funcionalidades já implementadas:
    - Usa regex de "cauda" (Resposta: X Explicação: frase.) como unidade única para evitar heurística frágil de ponto-espaço
    - Pré-processa o texto removendo o título em CAPS (ex: "RELATÓRIO DE AVALIAÇÃO: ...") antes de parsear
    - Suporta formato numerado ("1. Enunciado") e sem numeração
+8. Importador Cloze: segunda aba na janela de importação; parse_cloze() filtra linhas com {{c1::}}; cria notes no tipo Cloze nativo do Anki
+9. Botões "Prompt Múltipla Escolha" e "Prompt Cloze" para copiar prompts do NotebookLM para o clipboard
+10. Tags input: campo QLineEdit abaixo do deck selector; aplica tags a todos os cards importados na sessão
+11. Duplicate detection: _is_duplicate_mc() e _is_duplicate_cloze() via mw.col.find_notes(); duplicatas são puladas com contagem no relatório final
+12. Preview pane: QListWidget em cada aba atualizado ao digitar via textChanged; mostra itens parseados (com resposta para MC) antes do import; erro em vermelho se nenhum item detectado
 
 Contexto do projeto:
 - Desenvolvido durante o Clube da Programação da Laura Dubugras (4 semanas)
@@ -25,10 +30,6 @@ Contexto do projeto:
 Fluxo de estudo planejado:
 - Semanas 1-7 (aprender): Material da aula → NotebookLM (prompt Cloze) → importar pro Anki → revisar com Cloze
 - Semana 8/9 (testar): Material acumulado → NotebookLM (prompt MC) → importar pro Anki → revisar com múltipla escolha
-
-Próximas funcionalidades a implementar:
-1. Importador Cloze: segunda aba na janela de importação, cola texto no formato {{c1::termo}} e cria cards no note type Cloze nativo do Anki
-2. A janela de importação deve ter duas abas: "Multiple Choice" e "Cloze"
 
 Prompts do NotebookLM já definidos:
 
