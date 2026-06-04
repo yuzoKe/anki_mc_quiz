@@ -12,7 +12,7 @@ from aqt.qt import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QTextEdit, QComboBox, QPushButton, QTabWidget, QWidget,
     QListWidget, QAbstractItemView, QListWidgetItem,
-    QLineEdit, QFileDialog,
+    QLineEdit, QFileDialog, QMessageBox,
     QApplication, Qt
 )
 import re
@@ -916,6 +916,334 @@ class ImporterDialog(QDialog):
         if skipped:
             msg += f" {skipped} duplicate(s) skipped."
         showInfo(msg)
+        self.accept()
+
+
+# ---------------------------------------------------------------------------
+# Obsidian Exporter UI
+# ---------------------------------------------------------------------------
+
+_OBS_DEFAULT_FILENAME = "{{title}}.md"
+_OBS_DEFAULT_PROPERTIES = (
+    "tags:\n{{tags}}\ncreated: {{date}}\nanki-deck: {{deck}}"
+)
+_OBS_DEFAULT_CONTENT = "{{cards}}"
+
+
+class ObsidianExporterDialog(QDialog):
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Export to Obsidian")
+        self.setMinimumWidth(580)
+        self.setMinimumHeight(600)
+        self._mc_notes: list = []
+        self._cloze_notes: list = []
+        self._all_tags: list = []
+        self._cfg = self._load_config()
+        self._build_ui()
+
+    # ── Config ───────────────────────────────────────────────────────────────
+
+    def _load_config(self) -> dict:
+        defaults = {
+            "obsidian_vault_path": "",
+            "obsidian_last_folder": "",
+            "obs_template_filename": _OBS_DEFAULT_FILENAME,
+            "obs_template_properties": _OBS_DEFAULT_PROPERTIES,
+            "obs_template_content": _OBS_DEFAULT_CONTENT,
+        }
+        return {**defaults, **(mw.addonManager.getConfig(__name__) or {})}
+
+    def _save_config(self) -> None:
+        mw.addonManager.writeConfig(__name__, self._cfg)
+
+    # ── UI build ─────────────────────────────────────────────────────────────
+
+    def _build_ui(self) -> None:
+        layout = QVBoxLayout(self)
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+        tabs = QTabWidget()
+        tabs.addTab(self._build_export_tab(), "Exportar")
+        tabs.addTab(self._build_template_tab(), "Modelo")
+        layout.addWidget(tabs)
+
+    def _build_export_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(10)
+        layout.setContentsMargins(0, 12, 0, 0)
+
+        # Deck selector
+        deck_row = QHBoxLayout()
+        deck_label = QLabel("Source deck:")
+        deck_label.setFixedWidth(120)
+        self.deck_combo = QComboBox()
+        for name in sorted(mw.col.decks.all_names()):
+            self.deck_combo.addItem(name)
+        self.deck_combo.currentTextChanged.connect(self._load_deck_cards)
+        deck_row.addWidget(deck_label)
+        deck_row.addWidget(self.deck_combo, stretch=1)
+        layout.addLayout(deck_row)
+
+        # Card preview list
+        layout.addWidget(QLabel("Cards:"))
+        self.card_list = QListWidget()
+        self.card_list.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.card_list.setFixedHeight(140)
+        layout.addWidget(self.card_list)
+
+        # Vault path
+        vault_row = QHBoxLayout()
+        vault_label = QLabel("Vault:")
+        vault_label.setFixedWidth(120)
+        self.vault_edit = QLineEdit()
+        self.vault_edit.setReadOnly(True)
+        self.vault_edit.setPlaceholderText("Clique em Browse para selecionar o vault")
+        self.vault_edit.setText(self._cfg.get("obsidian_vault_path", ""))
+        btn_vault = QPushButton("Browse...")
+        btn_vault.setFixedWidth(80)
+        btn_vault.clicked.connect(self._on_browse_vault)
+        vault_row.addWidget(vault_label)
+        vault_row.addWidget(self.vault_edit, stretch=1)
+        vault_row.addWidget(btn_vault)
+        layout.addLayout(vault_row)
+
+        hint = QLabel("Caminho salvo entre sessões.")
+        hint.setStyleSheet("color: gray; font-size: 11px;")
+        layout.addWidget(hint)
+
+        # Output folder
+        folder_row = QHBoxLayout()
+        folder_label = QLabel("Output folder:")
+        folder_label.setFixedWidth(120)
+        self.folder_edit = QLineEdit()
+        self.folder_edit.setPlaceholderText("Pasta relativa dentro do vault (opcional)")
+        self.folder_edit.setText(self._cfg.get("obsidian_last_folder", ""))
+        btn_folder = QPushButton("Browse...")
+        btn_folder.setFixedWidth(80)
+        btn_folder.clicked.connect(self._on_browse_output_folder)
+        folder_row.addWidget(folder_label)
+        folder_row.addWidget(self.folder_edit, stretch=1)
+        folder_row.addWidget(btn_folder)
+        layout.addLayout(folder_row)
+
+        # Note title
+        title_row = QHBoxLayout()
+        title_label = QLabel("Note title:")
+        title_label.setFixedWidth(120)
+        self.title_edit = QLineEdit()
+        self.title_edit.setPlaceholderText("ex: COM130 Semana 3 — Revisão Anki")
+        title_row.addWidget(title_label)
+        title_row.addWidget(self.title_edit, stretch=1)
+        layout.addLayout(title_row)
+
+        layout.addStretch()
+
+        # Buttons
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        cancel_btn = QPushButton("Cancelar")
+        cancel_btn.setFixedWidth(100)
+        cancel_btn.clicked.connect(self.reject)
+        export_btn = QPushButton("Export →")
+        export_btn.setFixedWidth(100)
+        export_btn.setDefault(True)
+        export_btn.clicked.connect(self._on_export)
+        btn_row.addWidget(cancel_btn)
+        btn_row.addWidget(export_btn)
+        layout.addLayout(btn_row)
+
+        # Pre-load first deck
+        self._load_deck_cards(self.deck_combo.currentText())
+        return tab
+
+    def _build_template_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(10)
+        layout.setContentsMargins(0, 12, 0, 0)
+
+        # Filename template
+        fn_row = QHBoxLayout()
+        fn_label = QLabel("Nome do ficheiro:")
+        fn_label.setFixedWidth(140)
+        self.filename_edit = QLineEdit()
+        self.filename_edit.setText(
+            self._cfg.get("obs_template_filename", _OBS_DEFAULT_FILENAME))
+        fn_row.addWidget(fn_label)
+        fn_row.addWidget(self.filename_edit, stretch=1)
+        layout.addLayout(fn_row)
+
+        vars_hint = QLabel(
+            "Variáveis: {{title}}  {{date}}  {{deck}}  "
+            "{{tags}}  {{cards}}  {{mc_cards}}  {{cloze_cards}}"
+        )
+        vars_hint.setStyleSheet("color: gray; font-size: 11px;")
+        vars_hint.setWordWrap(True)
+        layout.addWidget(vars_hint)
+
+        # Properties template
+        layout.addWidget(QLabel("Propriedades (YAML frontmatter):"))
+        self.props_edit = QTextEdit()
+        self.props_edit.setPlainText(
+            self._cfg.get("obs_template_properties", _OBS_DEFAULT_PROPERTIES))
+        self.props_edit.setFixedHeight(100)
+        layout.addWidget(self.props_edit)
+
+        # Content template
+        layout.addWidget(QLabel("Conteúdo da nota:"))
+        self.content_edit = QTextEdit()
+        self.content_edit.setPlainText(
+            self._cfg.get("obs_template_content", _OBS_DEFAULT_CONTENT))
+        layout.addWidget(self.content_edit, stretch=1)
+
+        # Reset button
+        reset_row = QHBoxLayout()
+        reset_row.addStretch()
+        reset_btn = QPushButton("Repor padrões")
+        reset_btn.setFixedWidth(120)
+        reset_btn.clicked.connect(self._on_reset_template)
+        reset_row.addWidget(reset_btn)
+        layout.addLayout(reset_row)
+
+        return tab
+
+    # ── Deck loading ─────────────────────────────────────────────────────────
+
+    def _load_deck_cards(self, deck_name: str = "") -> None:
+        if not deck_name:
+            deck_name = self.deck_combo.currentText()
+        self.card_list.clear()
+        self._mc_notes = []
+        self._cloze_notes = []
+        tag_set: set = set()
+
+        note_ids = mw.col.find_notes(f'"deck:{deck_name}"')
+        for nid in note_ids:
+            note = mw.col.get_note(nid)
+            for tag in note.tags:
+                tag_set.add(tag)
+            field_names = [f["name"] for f in note.note_type()["flds"]]
+            if "Question" in field_names:
+                q = {
+                    "question": note["Question"],
+                    "A": note.get("A", ""), "B": note.get("B", ""),
+                    "C": note.get("C", ""), "D": note.get("D", ""),
+                    "E": note.get("E", ""),
+                    "answer": note["Answer"],
+                    "explanation": note.get("Explanation", ""),
+                }
+                self._mc_notes.append(q)
+                self.card_list.addItem(
+                    f"MC: {note['Question'][:65]}  → {note['Answer']}")
+            else:
+                text = note.fields[0]
+                self._cloze_notes.append(text)
+                self.card_list.addItem(f"Cloze: {text[:70]}")
+
+        self._all_tags = list(tag_set)
+
+    # ── Browse handlers ──────────────────────────────────────────────────────
+
+    def _on_browse_vault(self) -> None:
+        path = QFileDialog.getExistingDirectory(
+            self, "Selecionar Vault do Obsidian",
+            self._cfg.get("obsidian_vault_path", ""))
+        if path:
+            self.vault_edit.setText(path)
+            self._cfg["obsidian_vault_path"] = path
+            self._save_config()
+
+    def _on_browse_output_folder(self) -> None:
+        start = self._cfg.get("obsidian_vault_path", "") or ""
+        path = QFileDialog.getExistingDirectory(
+            self, "Selecionar pasta de saída", start)
+        if path:
+            import os
+            vault = self._cfg.get("obsidian_vault_path", "")
+            try:
+                rel = os.path.relpath(path, vault) if vault else path
+            except ValueError:
+                rel = path
+            self.folder_edit.setText(rel)
+
+    # ── Template reset ───────────────────────────────────────────────────────
+
+    def _on_reset_template(self) -> None:
+        self.filename_edit.setText(_OBS_DEFAULT_FILENAME)
+        self.props_edit.setPlainText(_OBS_DEFAULT_PROPERTIES)
+        self.content_edit.setPlainText(_OBS_DEFAULT_CONTENT)
+
+    # ── Export ───────────────────────────────────────────────────────────────
+
+    def _on_export(self) -> None:
+        import os
+        from aqt.utils import showWarning, showInfo
+
+        vault = self._cfg.get("obsidian_vault_path", "").strip()
+        if not vault or not os.path.isdir(vault):
+            showWarning(
+                "Vault não configurado ou não encontrado.\n"
+                "Clique em Browse para selecionar o vault.")
+            return
+
+        folder_rel = self.folder_edit.text().strip()
+        output_dir = os.path.join(vault, folder_rel) if folder_rel else vault
+        try:
+            os.makedirs(output_dir, exist_ok=True)
+        except OSError as e:
+            showWarning(f"Não foi possível criar a pasta:\n{output_dir}\n\n{e}")
+            return
+
+        deck_name = self.deck_combo.currentText()
+        title = self.title_edit.text().strip() or deck_name
+        tmpl_fn = self.filename_edit.text().strip() or _OBS_DEFAULT_FILENAME
+        tmpl_props = self.props_edit.toPlainText()
+        tmpl_content = self.content_edit.toPlainText()
+
+        # Render filename
+        from datetime import date
+        fn_vars = {
+            "title": title, "date": date.today().isoformat(), "deck": deck_name
+        }
+        filename = _render_template(tmpl_fn, fn_vars)
+        if not filename.endswith(".md"):
+            filename += ".md"
+        filepath = os.path.join(output_dir, filename)
+
+        if os.path.exists(filepath):
+            reply = QMessageBox.question(
+                self, "Ficheiro já existe",
+                f"'{filename}' já existe na pasta de destino.\nSobrescrever?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
+        obs_tags = _anki_tags_to_obsidian(self._all_tags)
+        content = _build_obsidian_note(
+            title=title, deck_name=deck_name, obs_tags=obs_tags,
+            mc_notes=self._mc_notes, cloze_notes=self._cloze_notes,
+            tmpl_properties=tmpl_props, tmpl_content=tmpl_content,
+        )
+
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(content)
+        except OSError as e:
+            showWarning(f"Não foi possível escrever o ficheiro:\n{filepath}\n\n{e}")
+            return
+
+        self._cfg["obsidian_last_folder"] = folder_rel
+        self._cfg["obs_template_filename"] = tmpl_fn
+        self._cfg["obs_template_properties"] = tmpl_props
+        self._cfg["obs_template_content"] = tmpl_content
+        self._save_config()
+
+        showInfo(f"Exportado para Obsidian:\n{filepath}")
         self.accept()
 
 
