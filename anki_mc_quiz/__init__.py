@@ -1041,9 +1041,12 @@ class _PropertyRow(QWidget):
         self.quick_check.setToolTip("Campo rapido — aparece na aba Exportar")
         self.quick_check.setFixedWidth(52)
 
-        self.del_btn = QPushButton("x")
+        self.del_btn = QPushButton("Del")
         self.del_btn.setFixedSize(26, 26)
-        self.del_btn.setStyleSheet("font-weight: bold; color: #aaa; border: none;")
+        self.del_btn.setStyleSheet(
+            "font-size: 9px; font-weight: bold; color: #e66;"
+            " background: transparent; border: 1px solid #633; border-radius: 3px;"
+        )
         self.del_btn.setToolTip("Remover propriedade")
 
         layout.addWidget(self.type_combo)
@@ -1292,12 +1295,16 @@ class ObsidianExporterDialog(QDialog):
         lbl_val.setStyleSheet("color: #888; font-size: 11px;")
         lbl_q = QLabel("Rapido")
         lbl_q.setFixedWidth(52)
+        lbl_q.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_q.setStyleSheet("color: #6c9; font-size: 11px;")
         lbl_q.setToolTip("Marcar como campo rapido — aparece na aba Exportar")
+        lbl_del_spacer = QLabel()
+        lbl_del_spacer.setFixedWidth(26)
         col_header.addWidget(lbl_type)
         col_header.addWidget(lbl_key)
         col_header.addWidget(lbl_val, stretch=1)
         col_header.addWidget(lbl_q)
+        col_header.addWidget(lbl_del_spacer)
         layout.addLayout(col_header)
 
         self._props_container = QWidget()
