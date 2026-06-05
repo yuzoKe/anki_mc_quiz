@@ -1668,6 +1668,11 @@ class ObsidianExporterDialog(QDialog):
 
     # ── Export ───────────────────────────────────────────────────────────────
 
+    def closeEvent(self, event) -> None:
+        self._save_active_to_config()
+        self._save_config()
+        super().closeEvent(event)
+
     def _on_export(self) -> None:
         import os
         from aqt.utils import showWarning, showInfo

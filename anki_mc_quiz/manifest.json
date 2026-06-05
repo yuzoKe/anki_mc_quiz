@@ -4,15 +4,27 @@
     "ankiweb_id": "",
     "author": "Eduardo Yuzo Kubota",
     "version": "1.0.0",
-    "homepage": "https://github.com/eduardokubota/anki-mc-quiz",
+    "homepage": "https://github.com/yuzoKe/anki_mc_quiz",
     "tags": ["study", "quiz", "multiple choice"],
     "conflicts": [],
     "mod": 0,
     "config": {
         "obsidian_vault_path": "",
         "obsidian_last_folder": "",
-        "obs_template_filename": "{{title}}.md",
-        "obs_template_properties": "tags:\n{{tags}}\ncreated: {{date}}\nanki-deck: {{deck}}",
-        "obs_template_content": "{{cards}}"
+        "obs_active_template": "Default",
+        "obs_templates": [
+            {
+                "name": "Default",
+                "filename": "{{title}}.md",
+                "prop_rows": [
+                    ["tags",      "{{tags}}",  "list"],
+                    ["created",   "{{date}}",  "date"],
+                    ["anki-deck", "{{deck}}",  "text"]
+                ],
+                "content": "{{cards}}"
+            }
+        ],
+        "obs_tmpl_deck_link": {},
+        "obs_known_properties": {}
     }
 }
