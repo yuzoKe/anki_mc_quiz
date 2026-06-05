@@ -644,9 +644,15 @@ def _render_template(template: str, variables: dict) -> str:
 
 
 def _yaml_quote(value: str) -> str:
-    """Wrap YAML value in double quotes when it contains special characters."""
+    """Wrap YAML value in double quotes when needed to preserve string type."""
     special = set('[]{}|>#!:,\\')
-    if any(c in value for c in special):
+    stripped = value.strip()
+    needs_quotes = (
+        any(c in value for c in special)
+        or stripped.lstrip('-').replace('.', '', 1).isdigit()
+        or stripped.lower() in ('true', 'false', 'null', 'yes', 'no', '')
+    )
+    if needs_quotes:
         return '"' + value.replace('\\', '\\\\').replace('"', '\\"') + '"'
     return value
 
