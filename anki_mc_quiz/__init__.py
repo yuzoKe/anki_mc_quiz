@@ -545,8 +545,7 @@ def parse_questions(text: str) -> list:
         if i == 0:
             raw_question = text[:choices_start].strip()
         else:
-            raw_question = text[tail_matches[i - 1].end()
-                                                        :choices_start].strip()
+            raw_question = text[tail_matches[i - 1].end()                                                        :choices_start].strip()
 
         # Strip leading question numbers like "1. " or "1) "
         raw_question = re.sub(r'^\d+[\.\)]\s*', '', raw_question)
@@ -855,7 +854,8 @@ class ImporterDialog(QDialog):
         for card in cards:
             self.cloze_preview.addItem(card[:80])
         if not cards and self.cloze_input.toPlainText().strip():
-            item = QListWidgetItem("No Cloze cards detected — check the format")
+            item = QListWidgetItem(
+                "No Cloze cards detected — check the format")
             item.setForeground(Qt.GlobalColor.red)
             self.cloze_preview.addItem(item)
 
@@ -973,7 +973,8 @@ class ImporterDialog(QDialog):
                 continue
             note = mw.col.new_note(cloze_model)
             # Escape HTML so tags like <tr> are displayed literally, not stripped
-            safe_text = card_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            safe_text = card_text.replace("&", "&amp;").replace(
+                "<", "&lt;").replace(">", "&gt;")
             note.fields[0] = safe_text
             note.note_type()["did"] = deck_id
             note.tags = self._get_tags()
@@ -1104,12 +1105,14 @@ class ObsidianExporterDialog(QDialog):
         return os.path.join(os.path.dirname(os.path.abspath(__file__)), "meta.json")
 
     def _load_config(self) -> dict:
-        import json, os
+        import json
+        import os
         raw: dict = {}
         path = self._meta_path()
         if os.path.isfile(path):
             try:
-                raw = json.loads(open(path, encoding="utf-8-sig").read()).get("config", {})
+                raw = json.loads(
+                    open(path, encoding="utf-8-sig").read()).get("config", {})
             except Exception:
                 pass
         # Migrate old single-template format to the new templates list
@@ -1132,7 +1135,8 @@ class ObsidianExporterDialog(QDialog):
         return {**defaults, **raw}
 
     def _save_config(self) -> None:
-        import json, os
+        import json
+        import os
         from aqt.utils import showWarning
         path = self._meta_path()
         try:
@@ -1169,10 +1173,12 @@ class ObsidianExporterDialog(QDialog):
         self.export_tmpl_combo = QComboBox()
         for t in self._cfg.get("obs_templates", _OBS_DEFAULT_TEMPLATES):
             self.export_tmpl_combo.addItem(t["name"])
-        active = self._cfg.get("obs_active_template", _OBS_DEFAULT_TEMPLATES[0]["name"])
+        active = self._cfg.get("obs_active_template",
+                               _OBS_DEFAULT_TEMPLATES[0]["name"])
         idx = self.export_tmpl_combo.findText(active)
         self.export_tmpl_combo.setCurrentIndex(max(0, idx))
-        self.export_tmpl_combo.currentIndexChanged.connect(self._on_export_tmpl_selected)
+        self.export_tmpl_combo.currentIndexChanged.connect(
+            self._on_export_tmpl_selected)
         tmpl_row.addWidget(tmpl_label)
         tmpl_row.addWidget(self.export_tmpl_combo, stretch=1)
         layout.addLayout(tmpl_row)
@@ -1199,14 +1205,14 @@ class ObsidianExporterDialog(QDialog):
         self.card_list.setFixedHeight(120)
         layout.addWidget(self.card_list)
 
-
         # Vault path
         vault_row = QHBoxLayout()
         vault_label = QLabel("Vault:")
         vault_label.setFixedWidth(120)
         self.vault_edit = QLineEdit()
         self.vault_edit.setReadOnly(True)
-        self.vault_edit.setPlaceholderText("Clique em Browse para selecionar o vault")
+        self.vault_edit.setPlaceholderText(
+            "Clique em Browse para selecionar o vault")
         self.vault_edit.setText(self._cfg.get("obsidian_vault_path", ""))
         btn_vault = QPushButton("Browse...")
         btn_vault.clicked.connect(self._on_browse_vault)
@@ -1214,10 +1220,6 @@ class ObsidianExporterDialog(QDialog):
         vault_row.addWidget(self.vault_edit, stretch=1)
         vault_row.addWidget(btn_vault)
         layout.addLayout(vault_row)
-
-        hint = QLabel("Caminho salvo entre sessões.")
-        hint.setStyleSheet("color: gray; font-size: 11px;")
-        layout.addWidget(hint)
 
         # Output folder
         folder_row = QHBoxLayout()
