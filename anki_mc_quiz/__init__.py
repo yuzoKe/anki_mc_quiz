@@ -1085,10 +1085,19 @@ class ObsidianExporterDialog(QDialog):
 
     # ── Config ───────────────────────────────────────────────────────────────
 
-    _ADDON_NAME = "anki_mc_quiz"
+    def _meta_path(self) -> str:
+        import os
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), "meta.json")
 
     def _load_config(self) -> dict:
-        raw = mw.addonManager.getConfig(self._ADDON_NAME) or {}
+        import json, os
+        raw: dict = {}
+        path = self._meta_path()
+        if os.path.isfile(path):
+            try:
+                raw = json.loads(open(path, encoding="utf-8").read()).get("config", {})
+            except Exception:
+                pass
         # Migrate old single-template format to the new templates list
         if "obs_prop_rows" in raw and "obs_templates" not in raw:
             raw["obs_templates"] = [{
@@ -1109,10 +1118,17 @@ class ObsidianExporterDialog(QDialog):
         return {**defaults, **raw}
 
     def _save_config(self) -> None:
+        import json, os
+        from aqt.utils import showWarning
+        path = self._meta_path()
         try:
-            mw.addonManager.writeConfig(self._ADDON_NAME, self._cfg)
+            data: dict = {}
+            if os.path.isfile(path):
+                data = json.loads(open(path, encoding="utf-8").read())
+            data["config"] = self._cfg
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
         except Exception as e:
-            from aqt.utils import showWarning
             showWarning(f"Erro ao guardar configuração:\n{e}")
 
     # ── UI build ─────────────────────────────────────────────────────────────
@@ -1575,6 +1591,9 @@ class ObsidianExporterDialog(QDialog):
     def _on_save_template(self) -> None:
         self._save_active_to_config()
         self._save_config()
+        from aqt.utils import showInfo
+        name = self._cfg.get("obs_active_template", "")
+        showInfo(f"Template '{name}' guardado.")
 
     def _on_template_selected(self, index: int) -> None:
         self._save_active_to_config()
