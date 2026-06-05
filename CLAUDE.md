@@ -23,11 +23,10 @@
 - `note["FieldName"]` — acesso a campo (Note NÃO tem `.get()`)
 - `note.tags = [...]` — define tags (lista de strings)
 - `mw.col.tags.split(text)` — converte string de tags para lista
-- `mw.addonManager.getConfig(__name__)` — lê config persistida
-- `mw.addonManager.writeConfig(__name__, dict)` — salva config
 - `mw.reset()` — atualiza UI do Anki após modificar coleção
 - `gui_hooks.main_window_did_init.append(fn)` — hook de startup
 - `TagEdit` (de `aqt.tagedit`): widget de input de tags com autocomplete nativo do Anki; instanciar com `TagEdit(parent)` e chamar `.setCol(mw.col)`
+- **Config do Obsidian Exporter**: lida diretamente via `meta.json` (não usa `mw.addonManager.getConfig/writeConfig` — aquele faz merge com manifest e perde chaves novas)
 
 ## Estrutura do arquivo __init__.py
 
@@ -39,10 +38,10 @@ Linhas ~412-475 TEMPLATE_VERSION + create_note_type()
 Linhas ~477-560 Parsers: parse_questions(), parse_cloze()
 Linhas ~562-680 Helpers Obsidian: _anki_tags_to_obsidian(), _format_mc_cards(),
                 _format_cloze_cards(), _format_mc_callouts(), _format_cloze_callouts(),
-                _render_template(), _build_obsidian_note(extra_vars=None)
+                _render_template(), _yaml_quote(), _build_obsidian_note()
 Linhas ~680+    ImporterDialog (QDialog) — 2 abas: MC e Cloze
 Linhas ~980+    _PROP_TYPES, _OBS_DEFAULT_*, _PropertyRow, ObsidianExporterDialog
-Linhas ~1750+   Startup: on_main_window_ready(), _register_menu(),
+Linhas ~1850+   Startup: on_main_window_ready(), _register_menu(),
                 _open_importer(), _open_obsidian_exporter()
                 hook: gui_hooks.main_window_did_init.append(on_main_window_ready)
 ```
@@ -94,13 +93,9 @@ Janela Qt com 2 abas:
 
 **Aba "Exportar":**
 ```
-[Template: QComboBox]  ← espelha o combo do Modelo; troca atualiza quick fields
-[Source deck: QComboBox]  ← seleciona baralho existente no Anki
+[Template: QComboBox]  ← espelha o combo do Modelo; troca restaura deck salvo
+[Source deck: QComboBox]
 [Cards: N total (X MC, Y Cloze)  QListWidget h=120]
-─ ⚡ Campos rápidos (só aparece se template tem propriedades marcadas com ⚡) ─
-  [label: QLineEdit]  [+1 se campo for numérico]
-  ...
-─────────────────────────────────────────────────────────────────────────────
 [Vault: QLineEdit (read-only) + Browse...]
 [Output folder: QLineEdit + Browse...]
 [Note title: QLineEdit]
@@ -112,72 +107,83 @@ Janela Qt com 2 abas:
 [Template: QComboBox] [Novo] [Duplicar] [Excluir] [Salvar]
 [Nome do ficheiro: QLineEdit]  ex: {{title}}.md
 [Variáveis disponíveis: hint label]
+─ Cabeçalho de colunas: Tipo | Propriedade | Valor ─
 [Propriedades: QScrollArea com _PropertyRow widgets]
-  cada row: [tipo ▼] [chave] [valor/{{var}}] [⚡] [×]
-  ⚡ = campo rápido — aparece na aba Exportar
-[+ Adicionar propriedade]
+  cada row: [tipo ▼] [chave ▼ editável] [valor/{{var}}] [🗑]
+[+ Adicionar propriedade]  [Importar do Obsidian]
 [Conteúdo da nota: QTextEdit]
 [Repor padrões]
 ```
 
 #### _PropertyRow
 - `type_combo` (QComboBox, 110px): Ab Text / ≡ List / # Number / ☑ Checkbox / 📅 Date / ⏰ Datetime
-- `key_edit` (QLineEdit, 120px): nome da propriedade
+- `key_combo` (QComboBox editável, 140px): nome da propriedade; populado com `obs_known_properties`; ao selecionar uma propriedade conhecida, preenche `type_combo` automaticamente
 - `val_edit` (QLineEdit, stretch): valor ou `{{variável}}`
-- `quick_btn` (QPushButton ⚡, checkable): marca como campo rápido
-- `del_btn` (QPushButton ×, 26px): remove a row
+- `del_btn` (QPushButton com `SP_TrashIcon`, 26px): remove a row
 - `ptype()` → str com key interno do tipo
-- `is_quick()` → bool
-- Serialização: `[key, val, ptype, is_quick]` — backward compat: old `[key, val, ptype]` migra com `is_quick=False`
+- `key()` → `key_combo.currentText().strip()`
+- Serialização: `[key, val, ptype]`
+
+#### Importar propriedades do Obsidian
+- Botão "Importar do Obsidian" lê `{vault}/.obsidian/types.json`
+- Guarda `{nome: ptype_mapeado}` em `obs_known_properties` no config
+- **Não cria rows** — apenas popula o dropdown de cada futura row adicionada
+- Ao selecionar do dropdown, tipo é auto-preenchido
+- Mapeamento: `multitext/tags → list`, `text → text`, `number → number`, `checkbox → checkbox`, `date → date`, `datetime → datetime`
 
 #### Template variables
 | Variável       | Valor                                                    |
 |---------------|----------------------------------------------------------|
 | `{{title}}`   | campo "Note title" (user-typed)                          |
-| `{{date}}`    | data de hoje ISO (2026-06-04)                            |
+| `{{date}}`    | data de hoje ISO (2026-06-05)                            |
 | `{{deck}}`    | nome do baralho selecionado                              |
-| `{{tags}}`    | tags em YAML (`  - tag` por linha)                       |
+| `{{tags}}`    | tags únicas do baralho em YAML (`  - tag` por linha)     |
 | `{{cards}}`   | corpo completo (MC + Cloze em markdown)                  |
 | `{{mc_cards}}`| só questões MC                                           |
 | `{{cloze_cards}}`| só cards Cloze                                        |
 | `{{cards_callouts}}`| MC + Cloze formatados como callouts Obsidian      |
 | `{{mc_cards_callouts}}`| só MC como callouts `> [!question]`            |
 | `{{cloze_cards_callouts}}`| só Cloze como callouts `> [!info]`          |
-| `{{chave}}`   | qualquer propriedade marcada como ⚡ (quick field)        |
 
 #### Conversão de tags Anki → Obsidian
 `UNIVESP::COM130` → `UNIVESP/COM130` (substitui `::` por `/`, preserva hierarquia nativa do Obsidian)
+`{{tags}}` recolhe todas as tags únicas das notas do baralho selecionado (não todas as tags do Anki).
 
-#### Quick fields
-- Propriedades com `is_quick=True` aparecem como inputs na aba Exportar
-- Campos numéricos ganham botão `+1`
-- Valores salvos em `obs_quick_values[template_name]` e restaurados na próxima abertura
-- Valores injetados em `all_vars` durante o export (sobrescrevem built-ins com mesmo nome)
-- `_build_obsidian_note(..., extra_vars=quick_vals)` — parâmetro opcional
+#### YAML generation — `_yaml_quote(value)`
+- Valores com `[]{}|>#!:,\` são sempre citados: `"[[wikilink]]"`
+- Valores numéricos (`4`, `10`) e booleanos (`true`, `false`) são citados para preservar tipo string: `"4"`
+- Tipos `number`, `date`, `datetime`: valor emitido sem aspas (bare `4`, `2026-06-05T00:00:00`)
+- Tipo `checkbox`: emite `true`/`false` sem aspas
+
+#### Config persistida — `meta.json` (leitura/escrita directa)
+```json
+{
+  "config": {
+    "obsidian_vault_path": "",
+    "obsidian_last_folder": "",
+    "obs_active_template": "Default",
+    "obs_templates": [
+      {
+        "name": "Default",
+        "filename": "{{title}}.md",
+        "prop_rows": [["tags","{{tags}}","list"], ["created","{{date}}","date"], ["anki-deck","{{deck}}","text"]],
+        "content": "{{cards}}"
+      }
+    ],
+    "obs_tmpl_deck_link": {"Default": "deck name"},
+    "obs_known_properties": {"Semana": "list", "nota_semana": "text"}
+  }
+}
+```
+- `_meta_path()` → `os.path.dirname(__file__) + "/meta.json"`
+- `_load_config()` lê com `encoding="utf-8-sig"` (suporta BOM)
+- `_save_config()` escreve com `encoding="utf-8"` (sem BOM)
+- `closeEvent()` chama `_save_active_to_config()` + `_save_config()` ao fechar
+- `_read_ui_as_template()` usa `obs_active_template` do config para o nome (não `tmpl_combo.currentText()`) — evita duplicados ao trocar template
 
 #### Template ↔ Deck auto-link
 - Ao trocar deck, salva `obs_tmpl_deck_link[template_name] = deck_name`
 - Ao trocar template (no combo do Exportar), restaura o deck salvo para aquele template
-
-#### Config persistida (manifest.json / mw.addonManager)
-```json
-{
-  "obsidian_vault_path": "",
-  "obsidian_last_folder": "",
-  "obs_active_template": "Default",
-  "obs_templates": [
-    {
-      "name": "Default",
-      "filename": "{{title}}.md",
-      "prop_rows": [["tags","{{tags}}","list",false], ["created","{{date}}","date",false], ["anki-deck","{{deck}}","text",false]],
-      "content": "{{cards}}"
-    }
-  ],
-  "obs_quick_values": {"Default": {}},
-  "obs_tmpl_deck_link": {"Default": "deck name"}
-}
-```
-- `_load_config` migra automaticamente formato antigo (`obs_prop_rows` flat) para `obs_templates`
 
 ### 5. Botões de prompt (clipboard)
 - "Prompt Múltipla Escolha 📋" e "Prompt Cloze 📋" no topo do ImporterDialog
@@ -193,6 +199,7 @@ Janela Qt com 2 abas:
 - Semanas 1-7 (aprender): Material da aula → NotebookLM (prompt Cloze) → Import from NotebookLM → revisar com Cloze no Anki
 - Semana 8/9 (testar): Material acumulado → NotebookLM (prompt MC) → Import from NotebookLM → revisar com múltipla escolha no Anki
 - Após revisão: Export to Obsidian → nota .md linkada às anotações do vault
+- **Fluxo semanal**: 1 template por disciplina (ex: COM130) com propriedades fixas; campos que mudam (Semana, nota_semana, datas) editados manualmente na aba Modelo antes de exportar
 
 ## Prompts do NotebookLM
 
