@@ -1571,8 +1571,11 @@ class ObsidianExporterDialog(QDialog):
         self.content_edit.setPlainText(tmpl.get("content", _OBS_DEFAULT_CONTENT))
 
     def _read_ui_as_template(self) -> dict:
+        # Use obs_active_template as the name source — tmpl_combo.currentText() may
+        # already reflect the NEW selection when this is called during a switch.
+        name = self._cfg.get("obs_active_template", self.tmpl_combo.currentText())
         return {
-            "name": self.tmpl_combo.currentText(),
+            "name": name,
             "filename": self.filename_edit.text().strip() or _OBS_DEFAULT_FILENAME,
             "prop_rows": self._get_prop_rows_data(),
             "content": self.content_edit.toPlainText(),
