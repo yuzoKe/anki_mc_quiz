@@ -1289,11 +1289,19 @@ class ObsidianExporterDialog(QDialog):
         scroll.setFrameShape(scroll.Shape.StyledPanel)
         layout.addWidget(scroll)
 
+        prop_actions = QHBoxLayout()
         add_prop_btn = QPushButton("+ Adicionar propriedade")
         add_prop_btn.setFlat(True)
         add_prop_btn.setStyleSheet("color: #6c9; text-align: left; padding: 2px 0;")
         add_prop_btn.clicked.connect(lambda: self._add_property_row())
-        layout.addWidget(add_prop_btn)
+        import_prop_btn = QPushButton("Importar do Obsidian")
+        import_prop_btn.setFlat(True)
+        import_prop_btn.setStyleSheet("color: #69c; text-align: left; padding: 2px 0;")
+        import_prop_btn.clicked.connect(self._on_import_obsidian_properties)
+        prop_actions.addWidget(add_prop_btn)
+        prop_actions.addStretch()
+        prop_actions.addWidget(import_prop_btn)
+        layout.addLayout(prop_actions)
 
         # ── Content ───────────────────────────────────────────────────────────
         layout.addWidget(QLabel("Conteúdo da nota:"))
@@ -1411,6 +1419,65 @@ class ObsidianExporterDialog(QDialog):
         tmpl_name = self._cfg.get("obs_active_template", "")
         if tmpl_name:
             self._cfg.setdefault("obs_tmpl_deck_link", {})[tmpl_name] = deck_name
+
+    # ── Obsidian property import ─────────────────────────────────────────────
+
+    _OBS_TYPE_MAP = {
+        "text":      "text",
+        "multitext": "list",
+        "tags":      "list",
+        "number":    "number",
+        "checkbox":  "checkbox",
+        "date":      "date",
+        "datetime":  "datetime",
+    }
+
+    def _on_import_obsidian_properties(self) -> None:
+        import json, os
+        from aqt.utils import showWarning, showInfo
+
+        vault = self._cfg.get("obsidian_vault_path", "").strip()
+        if not vault or not os.path.isdir(vault):
+            showWarning(
+                "Vault não configurado.\n"
+                "Configure o vault na aba Exportar antes de importar propriedades."
+            )
+            return
+
+        types_path = os.path.join(vault, ".obsidian", "types.json")
+        if not os.path.isfile(types_path):
+            showWarning(
+                f"Ficheiro não encontrado:\n{types_path}\n\n"
+                "Certifica-te de que o vault está correto e tem propriedades definidas."
+            )
+            return
+
+        try:
+            with open(types_path, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception as e:
+            showWarning(f"Erro ao ler types.json:\n{e}")
+            return
+
+        types_dict: dict = data.get("types", {})
+        if not types_dict:
+            showWarning("Nenhuma propriedade encontrada em types.json.")
+            return
+
+        existing_keys = {r.key_edit.text().strip() for r in self._prop_rows}
+        added = 0
+        for key, obs_type in sorted(types_dict.items()):
+            if key in existing_keys:
+                continue
+            ptype = self._OBS_TYPE_MAP.get(obs_type, "text")
+            self._add_property_row(key, "", ptype)
+            existing_keys.add(key)
+            added += 1
+
+        if added:
+            showInfo(f"{added} propriedade(s) importada(s).\nClica em Salvar para guardar.")
+        else:
+            showInfo("Todas as propriedades do Obsidian já existem no template.")
 
     # ── Property row helpers ─────────────────────────────────────────────────
 
