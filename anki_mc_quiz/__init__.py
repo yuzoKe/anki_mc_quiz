@@ -1773,6 +1773,8 @@ class ObsidianExporterDialog(QDialog):
                         yaml_lines.append(f"  - {_yaml_quote(item)}")
             elif ptype == "checkbox":
                 yaml_lines.append(f"{key}: {'true' if rendered.lower() in ('true','yes','1') else 'false'}")
+            elif ptype in ("number", "date", "datetime"):
+                yaml_lines.append(f"{key}: {rendered.strip().strip('\"\'')}")
             else:
                 yaml_lines.append(f"{key}: {_yaml_quote(rendered)}")
         tmpl_props = "\n".join(yaml_lines)
