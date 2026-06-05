@@ -1095,7 +1095,7 @@ class ObsidianExporterDialog(QDialog):
         path = self._meta_path()
         if os.path.isfile(path):
             try:
-                raw = json.loads(open(path, encoding="utf-8").read()).get("config", {})
+                raw = json.loads(open(path, encoding="utf-8-sig").read()).get("config", {})
             except Exception:
                 pass
         # Migrate old single-template format to the new templates list
