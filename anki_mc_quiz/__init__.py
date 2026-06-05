@@ -1085,8 +1085,10 @@ class ObsidianExporterDialog(QDialog):
 
     # ── Config ───────────────────────────────────────────────────────────────
 
+    _ADDON_NAME = "anki_mc_quiz"
+
     def _load_config(self) -> dict:
-        raw = mw.addonManager.getConfig(__name__) or {}
+        raw = mw.addonManager.getConfig(self._ADDON_NAME) or {}
         # Migrate old single-template format to the new templates list
         if "obs_prop_rows" in raw and "obs_templates" not in raw:
             raw["obs_templates"] = [{
@@ -1107,7 +1109,11 @@ class ObsidianExporterDialog(QDialog):
         return {**defaults, **raw}
 
     def _save_config(self) -> None:
-        mw.addonManager.writeConfig(__name__, self._cfg)
+        try:
+            mw.addonManager.writeConfig(self._ADDON_NAME, self._cfg)
+        except Exception as e:
+            from aqt.utils import showWarning
+            showWarning(f"Erro ao guardar configuração:\n{e}")
 
     # ── UI build ─────────────────────────────────────────────────────────────
 
