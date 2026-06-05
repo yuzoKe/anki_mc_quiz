@@ -643,6 +643,14 @@ def _render_template(template: str, variables: dict) -> str:
     return template
 
 
+def _yaml_quote(value: str) -> str:
+    """Wrap YAML value in double quotes when it contains special characters."""
+    special = set('[]{}|>#!:,\\')
+    if any(c in value for c in special):
+        return '"' + value.replace('\\', '\\\\').replace('"', '\\"') + '"'
+    return value
+
+
 def _build_obsidian_note(title: str, deck_name: str, obs_tags: list,
                           mc_notes: list, cloze_notes: list,
                           tmpl_properties: str, tmpl_content: str) -> str:
@@ -1762,11 +1770,11 @@ class ObsidianExporterDialog(QDialog):
                     yaml_lines.append(rendered)
                 else:
                     for item in (v.strip() for v in rendered.split(",") if v.strip()):
-                        yaml_lines.append(f"  - {item}")
+                        yaml_lines.append(f"  - {_yaml_quote(item)}")
             elif ptype == "checkbox":
                 yaml_lines.append(f"{key}: {'true' if rendered.lower() in ('true','yes','1') else 'false'}")
             else:
-                yaml_lines.append(f"{key}: {rendered}")
+                yaml_lines.append(f"{key}: {_yaml_quote(rendered)}")
         tmpl_props = "\n".join(yaml_lines)
 
         content = _build_obsidian_note(
