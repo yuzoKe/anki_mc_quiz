@@ -13,7 +13,7 @@ from aqt.qt import (
     QTextEdit, QComboBox, QPushButton, QTabWidget, QWidget,
     QListWidget, QAbstractItemView, QListWidgetItem,
     QLineEdit, QFileDialog, QMessageBox, QCheckBox,
-    QScrollArea, QFrame, QApplication, Qt
+    QScrollArea, QFrame, QApplication, QStyle, Qt
 )
 import re
 from aqt import mw, gui_hooks
@@ -1041,12 +1041,12 @@ class _PropertyRow(QWidget):
         self.quick_check.setToolTip("Campo rapido — aparece na aba Exportar")
         self.quick_check.setFixedWidth(52)
 
-        self.del_btn = QPushButton("Del")
+        self.del_btn = QPushButton()
         self.del_btn.setFixedSize(26, 26)
-        self.del_btn.setStyleSheet(
-            "font-size: 9px; font-weight: bold; color: #e66;"
-            " background: transparent; border: 1px solid #633; border-radius: 3px;"
+        self.del_btn.setIcon(
+            QApplication.style().standardIcon(QStyle.StandardPixmap.SP_TrashIcon)
         )
+        self.del_btn.setStyleSheet("background: transparent; border: none;")
         self.del_btn.setToolTip("Remover propriedade")
 
         layout.addWidget(self.type_combo)
@@ -1567,6 +1567,7 @@ class ObsidianExporterDialog(QDialog):
     def _on_save_template(self) -> None:
         self._save_active_to_config()
         self._save_config()
+        self._refresh_quick_fields()
 
     def _on_template_selected(self, index: int) -> None:
         self._save_active_to_config()
