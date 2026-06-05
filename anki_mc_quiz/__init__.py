@@ -1010,8 +1010,10 @@ _OBS_DEFAULT_TEMPLATES = [
 class _PropertyRow(QWidget):
     """A single key/value row in the properties editor."""
 
-    def __init__(self, key: str = "", value: str = "", ptype: str = "text", parent=None):
+    def __init__(self, key: str = "", value: str = "", ptype: str = "text",
+                 known_props: dict | None = None, parent=None):
         super().__init__(parent)
+        self._known_props: dict = known_props or {}
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 2, 0, 2)
         layout.setSpacing(6)
@@ -1025,9 +1027,17 @@ class _PropertyRow(QWidget):
                 self.type_combo.setCurrentIndex(i)
                 break
 
-        self.key_edit = QLineEdit(key)
-        self.key_edit.setPlaceholderText("Propriedade")
-        self.key_edit.setFixedWidth(120)
+        self.key_combo = QComboBox()
+        self.key_combo.setEditable(True)
+        self.key_combo.setFixedWidth(140)
+        self.key_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.key_combo.lineEdit().setPlaceholderText("Propriedade")
+        if self._known_props:
+            self.key_combo.addItem("")
+            for name in sorted(self._known_props.keys()):
+                self.key_combo.addItem(name)
+        self.key_combo.setCurrentText(key)
+        self.key_combo.currentTextChanged.connect(self._on_key_changed)
 
         self.val_edit = QLineEdit(value)
         self.val_edit.setPlaceholderText("Valor ou {{variável}}")
@@ -1041,12 +1051,23 @@ class _PropertyRow(QWidget):
         self.del_btn.setToolTip("Remover propriedade")
 
         layout.addWidget(self.type_combo)
-        layout.addWidget(self.key_edit)
+        layout.addWidget(self.key_combo)
         layout.addWidget(self.val_edit, stretch=1)
         layout.addWidget(self.del_btn)
 
+    def _on_key_changed(self, text: str) -> None:
+        if text in self._known_props:
+            ptype = self._known_props[text]
+            for i, (_, data) in enumerate(_PROP_TYPES):
+                if data == ptype:
+                    self.type_combo.setCurrentIndex(i)
+                    return
+
     def ptype(self) -> str:
         return self.type_combo.currentData()
+
+    def key(self) -> str:
+        return self.key_combo.currentText().strip()
 
 
 class ObsidianExporterDialog(QDialog):
@@ -1081,6 +1102,7 @@ class ObsidianExporterDialog(QDialog):
             "obs_templates": list(_OBS_DEFAULT_TEMPLATES),
             "obs_active_template": _OBS_DEFAULT_TEMPLATES[0]["name"],
             "obs_tmpl_deck_link": {},
+            "obs_known_properties": {},
         }
         return {**defaults, **raw}
 
@@ -1464,25 +1486,28 @@ class ObsidianExporterDialog(QDialog):
             showWarning("Nenhuma propriedade encontrada em types.json.")
             return
 
-        existing_keys = {r.key_edit.text().strip() for r in self._prop_rows}
-        added = 0
-        for key, obs_type in sorted(types_dict.items()):
-            if key in existing_keys:
-                continue
-            ptype = self._OBS_TYPE_MAP.get(obs_type, "text")
-            self._add_property_row(key, "", ptype)
-            existing_keys.add(key)
-            added += 1
+        # Save to config as {name: mapped_ptype} — not added as rows
+        known: dict = {}
+        for name, obs_type in types_dict.items():
+            known[name] = self._OBS_TYPE_MAP.get(obs_type, "text")
+        self._cfg["obs_known_properties"] = known
+        self._save_config()
 
-        if added:
-            showInfo(f"{added} propriedade(s) importada(s).\nClica em Salvar para guardar.")
-        else:
-            showInfo("Todas as propriedades do Obsidian já existem no template.")
+        # Reload existing rows so their dropdowns include the new options
+        current = self._read_ui_as_template()
+        self._load_template_into_ui(current)
+
+        showInfo(
+            f"{len(known)} propriedade(s) disponíveis para selecionar.\n"
+            "Clica em '+ Adicionar propriedade' e escolhe da lista."
+        )
 
     # ── Property row helpers ─────────────────────────────────────────────────
 
     def _add_property_row(self, key: str = "", value: str = "", ptype: str = "text") -> None:
-        row = _PropertyRow(key, value, ptype, parent=self._props_container)
+        known = self._cfg.get("obs_known_properties", {})
+        row = _PropertyRow(key, value, ptype, known_props=known,
+                           parent=self._props_container)
         row.del_btn.clicked.connect(lambda: self._remove_property_row(row))
         self._prop_rows.append(row)
         self._props_layout.addWidget(row)
@@ -1495,9 +1520,9 @@ class ObsidianExporterDialog(QDialog):
 
     def _get_prop_rows_data(self) -> list:
         return [
-            [r.key_edit.text().strip(), r.val_edit.text().strip(), r.ptype()]
+            [r.key(), r.val_edit.text().strip(), r.ptype()]
             for r in self._prop_rows
-            if r.key_edit.text().strip()
+            if r.key()
         ]
 
     # ── Template management ──────────────────────────────────────────────────
