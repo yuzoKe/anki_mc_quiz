@@ -11,7 +11,7 @@
 from aqt.qt import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QTextEdit, QPlainTextEdit, QComboBox, QPushButton, QTabWidget, QWidget,
-    QListWidget, QAbstractItemView, QListWidgetItem,
+    QListWidget, QAbstractItemView,
     QLineEdit, QFileDialog, QMessageBox,
     QScrollArea, QFrame, QApplication, QStyle, Qt, QEvent
 )
@@ -1259,10 +1259,9 @@ class ImporterDialog(QDialog):
         layout.addWidget(self.cloze_input)
 
         layout.addWidget(QLabel(_t("lbl_preview")))
-        self.cloze_preview = QListWidget()
-        self.cloze_preview.setEditTriggers(
-            QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.cloze_preview.setFixedHeight(110)
+        self.cloze_preview = QPlainTextEdit()
+        self.cloze_preview.setReadOnly(True)
+        self.cloze_preview.setFixedHeight(130)
         self.cloze_input.textChanged.connect(self._update_cloze_preview)
         layout.addWidget(self.cloze_preview)
         return tab
@@ -1285,14 +1284,14 @@ class ImporterDialog(QDialog):
         self.mc_preview.setPlainText("\n\n".join(blocks))
 
     def _update_cloze_preview(self):
-        self.cloze_preview.clear()
         cards = parse_cloze(self.cloze_input.toPlainText())
-        for card in cards:
-            self.cloze_preview.addItem(card[:80])
-        if not cards and self.cloze_input.toPlainText().strip():
-            item = QListWidgetItem(_t("preview_no_cloze"))
-            item.setForeground(Qt.GlobalColor.red)
-            self.cloze_preview.addItem(item)
+        if not cards:
+            if self.cloze_input.toPlainText().strip():
+                self.cloze_preview.setPlainText(_t("preview_no_cloze"))
+            else:
+                self.cloze_preview.setPlainText("")
+            return
+        self.cloze_preview.setPlainText("\n\n".join(cards))
 
     def _get_tags(self) -> list:
         return self.tags_input.get_tags()
