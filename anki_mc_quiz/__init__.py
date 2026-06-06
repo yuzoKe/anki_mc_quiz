@@ -1161,12 +1161,9 @@ class ImporterDialog(QDialog):
         lang_row.addStretch()
         for code, label in [("pt", "PT"), ("en", "EN")]:
             lb = QPushButton(label)
-            lb.setFixedWidth(34)
-            lb.setFlat(True)
+            lb.setFixedWidth(40)
             if _lang == code:
-                lb.setStyleSheet("color: white; font-weight: bold; text-decoration: underline; border: none;")
-            else:
-                lb.setStyleSheet("color: #888; border: none;")
+                lb.setEnabled(False)
             lb.clicked.connect(lambda _, c=code: self._switch_lang(c))
             lang_row.addWidget(lb)
         layout.addLayout(lang_row)
@@ -1622,12 +1619,9 @@ class ObsidianExporterDialog(QDialog):
         lang_row.addStretch()
         for code, label in [("pt", "PT"), ("en", "EN")]:
             lb = QPushButton(label)
-            lb.setFixedWidth(34)
-            lb.setFlat(True)
+            lb.setFixedWidth(40)
             if _lang == code:
-                lb.setStyleSheet("color: white; font-weight: bold; text-decoration: underline; border: none;")
-            else:
-                lb.setStyleSheet("color: #888; border: none;")
+                lb.setEnabled(False)
             lb.clicked.connect(lambda _, c=code: self._switch_lang(c))
             lang_row.addWidget(lb)
         layout.addLayout(lang_row)
