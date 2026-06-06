@@ -699,6 +699,101 @@ def _build_obsidian_note(title: str, deck_name: str, obs_tags: list,
 
 
 # ---------------------------------------------------------------------------
+# Tag chip editor
+# ---------------------------------------------------------------------------
+
+
+class _TagChipEditor(QWidget):
+    """Chip-style tag editor matching Anki's native Add dialog behaviour."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._tags: list = []
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(3)
+
+        # chips row (horizontally scrollable, fixed height)
+        self._chip_container = QWidget()
+        self._chip_layout = QHBoxLayout(self._chip_container)
+        self._chip_layout.setContentsMargins(2, 2, 2, 2)
+        self._chip_layout.setSpacing(4)
+        self._chip_layout.addStretch()
+
+        chip_scroll = QScrollArea()
+        chip_scroll.setWidget(self._chip_container)
+        chip_scroll.setWidgetResizable(True)
+        chip_scroll.setFixedHeight(36)
+        chip_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        chip_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        chip_scroll.setFrameShape(QFrame.Shape.NoFrame)
+
+        self._input = TagEdit(self)
+        self._input.setPlaceholderText("adicionar etiqueta…")
+        self._input.editingFinished.connect(self._commit_input)
+
+        outer.addWidget(chip_scroll)
+        outer.addWidget(self._input)
+
+    def setCol(self, col) -> None:
+        self._input.setCol(col)
+
+    def _commit_input(self) -> None:
+        text = self._input.text().strip()
+        if not text:
+            return
+        for tag in mw.col.tags.split(text):
+            if tag and tag not in self._tags:
+                self._tags.append(tag)
+        self._input.clear()
+        self._rebuild()
+
+    def _rebuild(self) -> None:
+        while self._chip_layout.count() > 1:
+            item = self._chip_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        for tag in self._tags:
+            frame = QFrame()
+            frame.setStyleSheet(
+                "QFrame { background: #3a6bc4; border-radius: 4px; }"
+            )
+            row = QHBoxLayout(frame)
+            row.setContentsMargins(7, 2, 3, 2)
+            row.setSpacing(3)
+            lbl = QLabel(tag)
+            lbl.setStyleSheet(
+                "color: white; font-size: 12px; background: transparent;"
+            )
+            del_btn = QPushButton()
+            del_btn.setIcon(
+                QApplication.style().standardIcon(
+                    QStyle.StandardPixmap.SP_TitleBarCloseButton
+                )
+            )
+            del_btn.setFixedSize(16, 16)
+            del_btn.setStyleSheet("background: transparent; border: none;")
+            del_btn.clicked.connect(lambda _, t=tag: self._remove(t))
+            row.addWidget(lbl)
+            row.addWidget(del_btn)
+            self._chip_layout.insertWidget(self._chip_layout.count() - 1, frame)
+
+    def _remove(self, tag: str) -> None:
+        self._tags = [t for t in self._tags if t != tag]
+        self._rebuild()
+
+    def get_tags(self) -> list:
+        result = list(self._tags)
+        text = self._input.text().strip()
+        if text:
+            for tag in mw.col.tags.split(text):
+                if tag and tag not in result:
+                    result.append(tag)
+        return result
+
+
+# ---------------------------------------------------------------------------
 # Importer UI
 # ---------------------------------------------------------------------------
 
@@ -767,8 +862,8 @@ class ImporterDialog(QDialog):
         # ── Tags input (shared) ───────────────────────────────────────────
         tags_row = QHBoxLayout()
         tags_label = QLabel("Etiquetas:")
-        tags_label.setFixedWidth(160)
-        self.tags_input = TagEdit(self)
+        tags_label.setFixedWidth(120)
+        self.tags_input = _TagChipEditor(self)
         self.tags_input.setCol(mw.col)
         tags_row.addWidget(tags_label)
         tags_row.addWidget(self.tags_input, stretch=1)
@@ -872,7 +967,7 @@ class ImporterDialog(QDialog):
             self.cloze_preview.addItem(item)
 
     def _get_tags(self) -> list:
-        return mw.col.tags.split(self.tags_input.text())
+        return self.tags_input.get_tags()
 
     def _is_duplicate_mc(self, question: str) -> bool:
         query = f'"note:{NOTE_TYPE_NAME}" "Question:{question}"'
