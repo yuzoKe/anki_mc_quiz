@@ -21,6 +21,286 @@ from aqt.tagedit import TagEdit
 
 
 # ---------------------------------------------------------------------------
+# i18n — language strings and helpers
+# ---------------------------------------------------------------------------
+
+_STRINGS: dict = {
+    "pt": {
+        "tag_placeholder": "adicionar etiqueta…",
+        # ImporterDialog
+        "importer_title": "Import from NotebookLM",
+        "btn_prompt_mc": "Prompt Múltipla Escolha  📋",
+        "btn_prompt_mc_copied": "Copiado! ✓",
+        "btn_prompt_cloze": "Prompt Cloze  📋",
+        "btn_prompt_cloze_copied": "Copiado! ✓",
+        "tooltip_prompt_mc": "Copia o prompt de múltipla escolha para o clipboard",
+        "tooltip_prompt_cloze": "Copia o prompt Cloze para o clipboard",
+        "tab_mc": "Múltipla Escolha",
+        "tab_cloze": "Cloze",
+        "lbl_deck": "Baralho de destino:",
+        "lbl_tags": "Etiquetas:",
+        "btn_cancel": "Cancelar",
+        "btn_import": "Importar →",
+        "mc_instructions": (
+            "Cole o texto do quiz gerado pelo NotebookLM abaixo.\n"
+            "Cada questão deve seguir o formato:\n"
+            "  1. Enunciado\n"
+            "  A) Alternativa A   B) Alternativa B\n"
+            "  Resposta: A\n"
+            "  Explicação: Texto"
+        ),
+        "mc_placeholder": "Cole o texto do NotebookLM aqui...",
+        "cloze_instructions": (
+            "Cole o texto Cloze gerado pelo NotebookLM abaixo.\n"
+            "Um card por linha. Formato:\n"
+            "  {{c1::termo}} é/são [contexto]."
+        ),
+        "cloze_placeholder": "Cole o texto Cloze do NotebookLM aqui...",
+        "lbl_preview": "Preview:",
+        "preview_bad_format": "Formato não reconhecido — use o Prompt Múltipla Escolha 📋 no NotebookLM",
+        "preview_no_questions": "Nenhuma questão detectada — verifique o formato",
+        "preview_no_cloze": "Nenhum card Cloze detectado — verifique o formato",
+        "warn_no_text": "Cole algum texto antes de importar.",
+        "warn_no_questions": (
+            "Nenhuma questão encontrada.\n\n"
+            "Verifique se o texto segue o formato esperado:\n"
+            "1. Enunciado\n"
+            "A) Alternativa A\n"
+            "Resposta: A\n"
+            "Explicação: Texto"
+        ),
+        "warn_no_cloze": "Nenhum card Cloze encontrado.\n\nCada linha deve conter {{c1::termo}}.",
+        "warn_no_note_type": "Tipo de nota não encontrado. Reinicie o Anki.",
+        "warn_no_cloze_type": "Tipo Cloze nativo não encontrado na coleção.",
+        "confirm_import_title": "Confirmar importação",
+        "confirm_mc_body": "<b>{n}</b> card(s) serão adicionado(s)",
+        "confirm_cloze_body": "<b>{n}</b> card(s) Cloze encontrado(s)",
+        "confirm_deck_lbl": "Baralho:",
+        "confirm_tags_lbl": "Etiquetas:",
+        "confirm_none": "(nenhuma)",
+        "confirm_proceed": "Deseja importar?",
+        "success_mc": "{created} card(s) adicionado(s) a '{deck}'.",
+        "success_skipped": " {skipped} duplicata(s) ignorada(s).",
+        "success_cloze": "{created} card(s) Cloze adicionado(s) a '{deck}'.",
+        # ObsidianExporterDialog
+        "exporter_title": "Export to Obsidian",
+        "tab_export": "Exportar",
+        "tab_model": "Modelo",
+        "lbl_template": "Template:",
+        "lbl_source_deck": "Source deck:",
+        "lbl_cards": "Cards:",
+        "lbl_vault": "Vault:",
+        "vault_hint": "Clique em Browse para selecionar o vault",
+        "btn_browse": "Browse...",
+        "lbl_output": "Output folder:",
+        "output_hint": "Pasta relativa dentro do vault (opcional)",
+        "lbl_note_title": "Note title:",
+        "title_hint": "ex: COM130 Semana 3 — Revisão Anki",
+        "btn_cancel_exp": "Cancelar",
+        "btn_export": "Export →",
+        "cards_summary": "{total} total ({mc} MC, {cloze} Cloze)",
+        "no_cards": "Nenhum card encontrado",
+        "btn_new": "Novo",
+        "btn_duplicate": "Duplicar",
+        "btn_delete": "Excluir",
+        "btn_save": "Salvar",
+        "lbl_filename": "Nome do ficheiro:",
+        "lbl_vars": (
+            "Variáveis: {{title}}  {{date}}  {{deck}}  {{tags}}\n"
+            "{{cards}}  {{mc_cards}}  {{cloze_cards}}\n"
+            "{{cards_callouts}}  {{mc_cards_callouts}}  {{cloze_cards_callouts}}"
+        ),
+        "col_type": "Tipo",
+        "col_property": "Propriedade",
+        "col_value": "Valor",
+        "btn_add_prop": "+ Adicionar propriedade",
+        "btn_import_obs": "Importar do Obsidian",
+        "lbl_content": "Conteúdo da nota:",
+        "btn_reset": "Repor padrões",
+        "prop_key_hint": "Propriedade",
+        "prop_val_hint": "Valor ou {{variável}}",
+        "dlg_vault_title": "Selecionar Vault do Obsidian",
+        "dlg_folder_title": "Selecionar pasta de saída",
+        "obs_props_imported": "{n} propriedade(s) disponíveis.\nClica em '+ Adicionar propriedade' e escolhe da lista.",
+        "template_saved": "Template '{name}' guardado.",
+        "dlg_new_tmpl_title": "Novo template",
+        "dlg_new_tmpl_label": "Nome do novo template:",
+        "warn_tmpl_exists": "Já existe um template com o nome '{name}'.",
+        "dlg_dup_tmpl_title": "Duplicar template",
+        "dlg_dup_tmpl_label": "Nome do template duplicado:",
+        "dlg_del_tmpl_title": "Excluir template",
+        "dlg_del_tmpl_body": "Excluir o template '{name}'?",
+        "warn_last_tmpl": "Não é possível excluir o único template.",
+        "warn_config_save": "Erro ao guardar configuração:\n{e}",
+        "warn_no_vault_props": "Vault não configurado.\nConfigure o vault na aba Exportar antes de importar propriedades.",
+        "warn_types_not_found": "Ficheiro não encontrado:\n{path}\n\nCertifica-te de que o vault está correto e tem propriedades definidas.",
+        "warn_types_error": "Erro ao ler types.json:\n{e}",
+        "warn_no_properties": "Nenhuma propriedade encontrada em types.json.",
+        "warn_vault_missing": "Vault não configurado ou não encontrado.\nClique em Browse para selecionar o vault.",
+        "warn_mkdir_failed": "Não foi possível criar a pasta:\n{path}\n\n{e}",
+        "confirm_overwrite_title": "Ficheiro já existe",
+        "confirm_overwrite_body": "'{filename}' já existe na pasta de destino.\nSobrescrever?",
+        "warn_write_failed": "Não foi possível escrever o ficheiro:\n{path}\n\n{e}",
+        "success_export": "Exportado para Obsidian:\n{path}",
+    },
+    "en": {
+        "tag_placeholder": "add tag…",
+        # ImporterDialog
+        "importer_title": "Import from NotebookLM",
+        "btn_prompt_mc": "MC Prompt  📋",
+        "btn_prompt_mc_copied": "Copied! ✓",
+        "btn_prompt_cloze": "Cloze Prompt  📋",
+        "btn_prompt_cloze_copied": "Copied! ✓",
+        "tooltip_prompt_mc": "Copy the multiple choice prompt to clipboard",
+        "tooltip_prompt_cloze": "Copy the Cloze prompt to clipboard",
+        "tab_mc": "Multiple Choice",
+        "tab_cloze": "Cloze",
+        "lbl_deck": "Destination deck:",
+        "lbl_tags": "Tags:",
+        "btn_cancel": "Cancel",
+        "btn_import": "Import →",
+        "mc_instructions": (
+            "Paste the quiz text generated by NotebookLM below.\n"
+            "Each question must follow the format:\n"
+            "  1. Question text\n"
+            "  A) Choice A   B) Choice B\n"
+            "  Resposta: A\n"
+            "  Explicação: Explanation text"
+        ),
+        "mc_placeholder": "Paste your NotebookLM quiz text here...",
+        "cloze_instructions": (
+            "Paste the Cloze text generated by NotebookLM below.\n"
+            "One card per line. Format:\n"
+            "  {{c1::term}} is/are [context]."
+        ),
+        "cloze_placeholder": "Paste your NotebookLM Cloze text here...",
+        "lbl_preview": "Preview:",
+        "preview_bad_format": "Unrecognized format — use the MC Prompt 📋 in NotebookLM",
+        "preview_no_questions": "No questions detected — check the format",
+        "preview_no_cloze": "No Cloze cards detected — check the format",
+        "warn_no_text": "Please paste some text before importing.",
+        "warn_no_questions": (
+            "No questions found.\n\n"
+            "Make sure the text follows the expected format:\n"
+            "1. Question text\n"
+            "A) Choice A\n"
+            "Resposta: A\n"
+            "Explicação: Explanation"
+        ),
+        "warn_no_cloze": "No Cloze cards found.\n\nEach line must contain {{c1::term}}.",
+        "warn_no_note_type": "Multiple Choice Quiz note type not found. Please restart Anki.",
+        "warn_no_cloze_type": "Native Cloze note type not found in your collection.",
+        "confirm_import_title": "Confirm import",
+        "confirm_mc_body": "<b>{n}</b> card(s) will be added",
+        "confirm_cloze_body": "<b>{n}</b> Cloze card(s) found",
+        "confirm_deck_lbl": "Deck:",
+        "confirm_tags_lbl": "Tags:",
+        "confirm_none": "(none)",
+        "confirm_proceed": "Proceed with import?",
+        "success_mc": "{created} card(s) added to '{deck}'.",
+        "success_skipped": " {skipped} duplicate(s) skipped.",
+        "success_cloze": "{created} Cloze card(s) added to '{deck}'.",
+        # ObsidianExporterDialog
+        "exporter_title": "Export to Obsidian",
+        "tab_export": "Export",
+        "tab_model": "Template",
+        "lbl_template": "Template:",
+        "lbl_source_deck": "Source deck:",
+        "lbl_cards": "Cards:",
+        "lbl_vault": "Vault:",
+        "vault_hint": "Click Browse to select the vault",
+        "btn_browse": "Browse...",
+        "lbl_output": "Output folder:",
+        "output_hint": "Relative folder inside the vault (optional)",
+        "lbl_note_title": "Note title:",
+        "title_hint": "e.g.: COM130 Week 3 — Anki Review",
+        "btn_cancel_exp": "Cancel",
+        "btn_export": "Export →",
+        "cards_summary": "{total} total ({mc} MC, {cloze} Cloze)",
+        "no_cards": "No cards found",
+        "btn_new": "New",
+        "btn_duplicate": "Duplicate",
+        "btn_delete": "Delete",
+        "btn_save": "Save",
+        "lbl_filename": "File name:",
+        "lbl_vars": (
+            "Variables: {{title}}  {{date}}  {{deck}}  {{tags}}\n"
+            "{{cards}}  {{mc_cards}}  {{cloze_cards}}\n"
+            "{{cards_callouts}}  {{mc_cards_callouts}}  {{cloze_cards_callouts}}"
+        ),
+        "col_type": "Type",
+        "col_property": "Property",
+        "col_value": "Value",
+        "btn_add_prop": "+ Add property",
+        "btn_import_obs": "Import from Obsidian",
+        "lbl_content": "Note content:",
+        "btn_reset": "Reset defaults",
+        "prop_key_hint": "Property",
+        "prop_val_hint": "Value or {{variable}}",
+        "dlg_vault_title": "Select Obsidian Vault",
+        "dlg_folder_title": "Select output folder",
+        "obs_props_imported": "{n} property(ies) available.\nClick '+ Add property' and choose from the list.",
+        "template_saved": "Template '{name}' saved.",
+        "dlg_new_tmpl_title": "New template",
+        "dlg_new_tmpl_label": "New template name:",
+        "warn_tmpl_exists": "A template named '{name}' already exists.",
+        "dlg_dup_tmpl_title": "Duplicate template",
+        "dlg_dup_tmpl_label": "Duplicated template name:",
+        "dlg_del_tmpl_title": "Delete template",
+        "dlg_del_tmpl_body": "Delete template '{name}'?",
+        "warn_last_tmpl": "Cannot delete the only template.",
+        "warn_config_save": "Error saving configuration:\n{e}",
+        "warn_no_vault_props": "Vault not configured.\nSet the vault in the Export tab before importing properties.",
+        "warn_types_not_found": "File not found:\n{path}\n\nMake sure the vault is correct and has properties defined.",
+        "warn_types_error": "Error reading types.json:\n{e}",
+        "warn_no_properties": "No properties found in types.json.",
+        "warn_vault_missing": "Vault not configured or not found.\nClick Browse to select the vault.",
+        "warn_mkdir_failed": "Could not create folder:\n{path}\n\n{e}",
+        "confirm_overwrite_title": "File already exists",
+        "confirm_overwrite_body": "'{filename}' already exists in the destination folder.\nOverwrite?",
+        "warn_write_failed": "Could not write file:\n{path}\n\n{e}",
+        "success_export": "Exported to Obsidian:\n{path}",
+    },
+}
+
+
+def _get_lang() -> str:
+    import json, os
+    meta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "meta.json")
+    if os.path.isfile(meta):
+        try:
+            return json.loads(open(meta, encoding="utf-8-sig").read()).get(
+                "config", {}).get("language", "pt")
+        except Exception:
+            pass
+    return "pt"
+
+
+_lang: str = _get_lang()
+
+
+def _t(key: str, **kw) -> str:
+    s = _STRINGS.get(_lang, _STRINGS["pt"]).get(key, _STRINGS["pt"].get(key, key))
+    return s.format(**kw) if kw else s
+
+
+def _set_lang(lang: str) -> None:
+    global _lang
+    import json, os
+    _lang = lang
+    meta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "meta.json")
+    try:
+        data: dict = {}
+        if os.path.isfile(meta):
+            data = json.loads(open(meta, encoding="utf-8").read())
+        data.setdefault("config", {})["language"] = lang
+        with open(meta, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
 # Note type definition
 # ---------------------------------------------------------------------------
 
@@ -732,7 +1012,7 @@ class _TagChipEditor(QWidget):
         chip_scroll.setFrameShape(QFrame.Shape.NoFrame)
 
         self._input = TagEdit(self)
-        self._input.setPlaceholderText("adicionar etiqueta…")
+        self._input.setPlaceholderText(_t("tag_placeholder"))
         self._input.editingFinished.connect(self._commit_input)
         self._input.installEventFilter(self)
 
@@ -828,7 +1108,7 @@ class ImporterDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Import from NotebookLM")
+        self.setWindowTitle(_t("importer_title"))
         self.setMinimumWidth(560)
         self.setMinimumHeight(620)
         self._build_ui()
@@ -876,20 +1156,32 @@ class ImporterDialog(QDialog):
         layout.setSpacing(12)
         layout.setContentsMargins(20, 20, 20, 20)
 
+        # ── Language toggle ───────────────────────────────────────────────
+        lang_row = QHBoxLayout()
+        lang_row.addStretch()
+        for code, label in [("pt", "PT"), ("en", "EN")]:
+            lb = QPushButton(label)
+            lb.setFixedWidth(34)
+            lb.setFlat(True)
+            if _lang == code:
+                lb.setStyleSheet("font-weight: bold; text-decoration: underline;")
+            lb.clicked.connect(lambda _, c=code: self._switch_lang(c))
+            lang_row.addWidget(lb)
+        layout.addLayout(lang_row)
+
         # ── Prompt copy buttons ───────────────────────────────────────────
         prompt_row = QHBoxLayout()
-        btn_copy_mc = QPushButton("Prompt Múltipla Escolha  📋")
-        btn_copy_mc.setToolTip(
-            "Copia o prompt de múltipla escolha para o clipboard")
+        btn_copy_mc = QPushButton(_t("btn_prompt_mc"))
+        btn_copy_mc.setToolTip(_t("tooltip_prompt_mc"))
         btn_copy_mc.clicked.connect(
             lambda: self._copy_to_clipboard(
-                PROMPT_MC, btn_copy_mc, "Prompt Múltipla Escolha  📋")
+                PROMPT_MC, btn_copy_mc, "btn_prompt_mc", "btn_prompt_mc_copied")
         )
-        btn_copy_cloze = QPushButton("Prompt Cloze  📋")
-        btn_copy_cloze.setToolTip("Copia o prompt Cloze para o clipboard")
+        btn_copy_cloze = QPushButton(_t("btn_prompt_cloze"))
+        btn_copy_cloze.setToolTip(_t("tooltip_prompt_cloze"))
         btn_copy_cloze.clicked.connect(
             lambda: self._copy_to_clipboard(
-                PROMPT_CLOZE, btn_copy_cloze, "Prompt Cloze  📋")
+                PROMPT_CLOZE, btn_copy_cloze, "btn_prompt_cloze", "btn_prompt_cloze_copied")
         )
         prompt_row.addWidget(btn_copy_mc)
         prompt_row.addWidget(btn_copy_cloze)
@@ -897,13 +1189,13 @@ class ImporterDialog(QDialog):
 
         # ── Tabs ──────────────────────────────────────────────────────────
         self.tabs = QTabWidget()
-        self.tabs.addTab(self._build_mc_tab(), "Multiple Choice")
-        self.tabs.addTab(self._build_cloze_tab(), "Cloze")
+        self.tabs.addTab(self._build_mc_tab(), _t("tab_mc"))
+        self.tabs.addTab(self._build_cloze_tab(), _t("tab_cloze"))
         layout.addWidget(self.tabs)
 
         # ── Deck selector (shared) ────────────────────────────────────────
         deck_row = QHBoxLayout()
-        deck_label = QLabel("Destination deck:")
+        deck_label = QLabel(_t("lbl_deck"))
         deck_label.setFixedWidth(120)
         self.deck_combo = QComboBox()
         for name in sorted(mw.col.decks.all_names()):
@@ -914,7 +1206,7 @@ class ImporterDialog(QDialog):
 
         # ── Tags input (shared) ───────────────────────────────────────────
         tags_row = QHBoxLayout()
-        tags_label = QLabel("Etiquetas:")
+        tags_label = QLabel(_t("lbl_tags"))
         tags_label.setFixedWidth(120)
         self.tags_input = _TagChipEditor(self)
         self.tags_input.setCol(mw.col)
@@ -925,9 +1217,9 @@ class ImporterDialog(QDialog):
         # ── Buttons (shared) ──────────────────────────────────────────────
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton(_t("btn_cancel"))
         cancel_btn.clicked.connect(self.reject)
-        import_btn = QPushButton("Import →")
+        import_btn = QPushButton(_t("btn_import"))
         import_btn.setDefault(True)
         import_btn.clicked.connect(self._on_import)
         btn_row.addWidget(cancel_btn)
@@ -939,23 +1231,15 @@ class ImporterDialog(QDialog):
         layout = QVBoxLayout(tab)
         layout.setSpacing(10)
         layout.setContentsMargins(0, 12, 0, 0)
-        instructions = QLabel(
-            "Paste the quiz text generated by NotebookLM below.\n"
-            "Each question must follow the format:\n"
-            "  1. Question text\n"
-            "  A) Choice A   B) Choice B\n"
-            "  Resposta: A\n"
-            "  Explicação: Explanation text"
-        )
+        instructions = QLabel(_t("mc_instructions"))
         instructions.setWordWrap(True)
         instructions.setStyleSheet(self._INSTRUCTION_STYLE)
         layout.addWidget(instructions)
         self.mc_input = QTextEdit()
-        self.mc_input.setPlaceholderText(
-            "Paste your NotebookLM quiz text here...")
+        self.mc_input.setPlaceholderText(_t("mc_placeholder"))
         layout.addWidget(self.mc_input)
 
-        layout.addWidget(QLabel("Preview:"))
+        layout.addWidget(QLabel(_t("lbl_preview")))
         self.mc_preview = QListWidget()
         self.mc_preview.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -969,20 +1253,15 @@ class ImporterDialog(QDialog):
         layout = QVBoxLayout(tab)
         layout.setSpacing(10)
         layout.setContentsMargins(0, 12, 0, 0)
-        instructions = QLabel(
-            "Paste the Cloze text generated by NotebookLM below.\n"
-            "One card per line. Format:\n"
-            "  {{c1::term}} is/are [context]."
-        )
+        instructions = QLabel(_t("cloze_instructions"))
         instructions.setWordWrap(True)
         instructions.setStyleSheet(self._INSTRUCTION_STYLE)
         layout.addWidget(instructions)
         self.cloze_input = QTextEdit()
-        self.cloze_input.setPlaceholderText(
-            "Paste your NotebookLM Cloze text here...")
+        self.cloze_input.setPlaceholderText(_t("cloze_placeholder"))
         layout.addWidget(self.cloze_input)
 
-        layout.addWidget(QLabel("Preview:"))
+        layout.addWidget(QLabel(_t("lbl_preview")))
         self.cloze_preview = QListWidget()
         self.cloze_preview.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -1001,9 +1280,9 @@ class ImporterDialog(QDialog):
         if not questions and self.mc_input.toPlainText().strip():
             text = self.mc_input.toPlainText()
             if "Resposta:" not in text and "Explicação:" not in text:
-                msg = "Formato não reconhecido — use o Prompt Múltipla Escolha 📋 no NotebookLM"
+                msg = _t("preview_bad_format")
             else:
-                msg = "No questions detected — check the format"
+                msg = _t("preview_no_questions")
             item = QListWidgetItem(msg)
             item.setForeground(Qt.GlobalColor.red)
             self.mc_preview.addItem(item)
@@ -1014,8 +1293,7 @@ class ImporterDialog(QDialog):
         for card in cards:
             self.cloze_preview.addItem(card[:80])
         if not cards and self.cloze_input.toPlainText().strip():
-            item = QListWidgetItem(
-                "No Cloze cards detected — check the format")
+            item = QListWidgetItem(_t("preview_no_cloze"))
             item.setForeground(Qt.GlobalColor.red)
             self.cloze_preview.addItem(item)
 
@@ -1030,11 +1308,17 @@ class ImporterDialog(QDialog):
         query = f'"note:Cloze" "Text:{card_text}"'
         return bool(mw.col.find_notes(query))
 
-    def _copy_to_clipboard(self, text, btn, original_label):
+    def _copy_to_clipboard(self, text, btn, original_key, copied_key):
         QApplication.clipboard().setText(text)
-        btn.setText("Copiado! ✓")
+        btn.setText(_t(copied_key))
         from aqt.qt import QTimer
-        QTimer.singleShot(1500, lambda: btn.setText(original_label))
+        QTimer.singleShot(1500, lambda: btn.setText(_t(original_key)))
+
+    def _switch_lang(self, lang: str) -> None:
+        _set_lang(lang)
+        self._save_tags()
+        self.close()
+        _open_importer()
 
     def _on_import(self):
         if self.tabs.currentIndex() == 0:
@@ -1046,30 +1330,23 @@ class ImporterDialog(QDialog):
         from aqt.utils import showWarning, showInfo
         raw_text = self.mc_input.toPlainText().strip()
         if not raw_text:
-            showWarning("Please paste some text before importing.")
+            showWarning(_t("warn_no_text"))
             return
 
         questions = parse_questions(raw_text)
         if not questions:
-            showWarning(
-                "No questions found.\n\n"
-                "Make sure the text follows the expected format:\n"
-                "1. Question text\n"
-                "A) Choice A\n"
-                "Resposta: A\n"
-                "Explicação: Explanation"
-            )
+            showWarning(_t("warn_no_questions"))
             return
 
         deck_name = self.deck_combo.currentText()
         tags = self._get_tags()
-        tags_str = ", ".join(tags) if tags else "(nenhuma)"
+        tags_str = ", ".join(tags) if tags else _t("confirm_none")
         reply = QMessageBox.question(
-            self, "Confirmar importação",
-            f"<b>{len(questions)}</b> card(s) serão adicionado(s)<br>"
-            f"Baralho: <b>{deck_name}</b><br>"
-            f"Etiquetas: <b>{tags_str}</b><br><br>"
-            "Deseja importar?",
+            self, _t("confirm_import_title"),
+            f"{_t('confirm_mc_body', n=len(questions))}<br>"
+            f"{_t('confirm_deck_lbl')} <b>{deck_name}</b><br>"
+            f"{_t('confirm_tags_lbl')} <b>{tags_str}</b><br><br>"
+            f"{_t('confirm_proceed')}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -1080,8 +1357,7 @@ class ImporterDialog(QDialog):
 
         model = mw.col.models.by_name(NOTE_TYPE_NAME)
         if not model:
-            showWarning(
-                "Multiple Choice Quiz note type not found. Please restart Anki.")
+            showWarning(_t("warn_no_note_type"))
             return
 
         created = 0
@@ -1105,9 +1381,9 @@ class ImporterDialog(QDialog):
             created += 1
 
         mw.reset()
-        msg = f"{created} card(s) added to '{deck_name}'."
+        msg = _t("success_mc", created=created, deck=deck_name)
         if skipped:
-            msg += f" {skipped} duplicate(s) skipped."
+            msg += _t("success_skipped", skipped=skipped)
         showInfo(msg)
         self.accept()
 
@@ -1115,15 +1391,12 @@ class ImporterDialog(QDialog):
         from aqt.utils import showWarning, showInfo
         raw_text = self.cloze_input.toPlainText().strip()
         if not raw_text:
-            showWarning("Please paste some text before importing.")
+            showWarning(_t("warn_no_text"))
             return
 
         cards = parse_cloze(raw_text)
         if not cards:
-            showWarning(
-                "No Cloze cards found.\n\n"
-                "Each line must contain {{c1::term}}."
-            )
+            showWarning(_t("warn_no_cloze"))
             return
 
         # Find the native Cloze note type (model type == 1)
@@ -1131,18 +1404,18 @@ class ImporterDialog(QDialog):
             (m for m in mw.col.models.all() if m["type"] == 1), None
         )
         if not cloze_model:
-            showWarning("Native Cloze note type not found in your collection.")
+            showWarning(_t("warn_no_cloze_type"))
             return
 
         deck_name = self.deck_combo.currentText()
         tags = self._get_tags()
-        tags_str = ", ".join(tags) if tags else "(nenhuma)"
+        tags_str = ", ".join(tags) if tags else _t("confirm_none")
         reply = QMessageBox.question(
-            self, "Confirmar importação",
-            f"<b>{len(cards)}</b> card(s) Cloze encontrado(s)<br>"
-            f"Baralho: <b>{deck_name}</b><br>"
-            f"Etiquetas: <b>{tags_str}</b><br><br>"
-            "Deseja importar?",
+            self, _t("confirm_import_title"),
+            f"{_t('confirm_cloze_body', n=len(cards))}<br>"
+            f"{_t('confirm_deck_lbl')} <b>{deck_name}</b><br>"
+            f"{_t('confirm_tags_lbl')} <b>{tags_str}</b><br><br>"
+            f"{_t('confirm_proceed')}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -1168,9 +1441,9 @@ class ImporterDialog(QDialog):
             created += 1
 
         mw.reset()
-        msg = f"{created} Cloze card(s) added to '{deck_name}'."
+        msg = _t("success_cloze", created=created, deck=deck_name)
         if skipped:
-            msg += f" {skipped} duplicate(s) skipped."
+            msg += _t("success_skipped", skipped=skipped)
         showInfo(msg)
         self.accept()
 
@@ -1232,7 +1505,7 @@ class _PropertyRow(QWidget):
         self.key_combo.setEditable(True)
         self.key_combo.setFixedWidth(140)
         self.key_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.key_combo.lineEdit().setPlaceholderText("Propriedade")
+        self.key_combo.lineEdit().setPlaceholderText(_t("prop_key_hint"))
         if self._known_props:
             self.key_combo.addItem("")
             for name in sorted(self._known_props.keys()):
@@ -1241,7 +1514,7 @@ class _PropertyRow(QWidget):
         self.key_combo.currentTextChanged.connect(self._on_key_changed)
 
         self.val_edit = QLineEdit(value)
-        self.val_edit.setPlaceholderText("Valor ou {{variável}}")
+        self.val_edit.setPlaceholderText(_t("prop_val_hint"))
 
         self.del_btn = QPushButton()
         self.del_btn.setFixedSize(26, 26)
@@ -1275,7 +1548,7 @@ class ObsidianExporterDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Export to Obsidian")
+        self.setWindowTitle(_t("exporter_title"))
         self.setMinimumWidth(580)
         self.setMinimumHeight(600)
         self._mc_notes: list = []
@@ -1333,7 +1606,7 @@ class ObsidianExporterDialog(QDialog):
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
         except Exception as e:
-            showWarning(f"Erro ao guardar configuração:\n{e}")
+            showWarning(_t("warn_config_save", e=e))
 
     # ── UI build ─────────────────────────────────────────────────────────────
 
@@ -1341,10 +1614,31 @@ class ObsidianExporterDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
         layout.setContentsMargins(20, 20, 20, 20)
+
+        # ── Language toggle ───────────────────────────────────────────────
+        lang_row = QHBoxLayout()
+        lang_row.addStretch()
+        for code, label in [("pt", "PT"), ("en", "EN")]:
+            lb = QPushButton(label)
+            lb.setFixedWidth(34)
+            lb.setFlat(True)
+            if _lang == code:
+                lb.setStyleSheet("font-weight: bold; text-decoration: underline;")
+            lb.clicked.connect(lambda _, c=code: self._switch_lang(c))
+            lang_row.addWidget(lb)
+        layout.addLayout(lang_row)
+
         tabs = QTabWidget()
-        tabs.addTab(self._build_export_tab(), "Exportar")
-        tabs.addTab(self._build_template_tab(), "Modelo")
+        tabs.addTab(self._build_export_tab(), _t("tab_export"))
+        tabs.addTab(self._build_template_tab(), _t("tab_model"))
         layout.addWidget(tabs)
+
+    def _switch_lang(self, lang: str) -> None:
+        _set_lang(lang)
+        self._save_active_to_config()
+        self._save_config()
+        self.close()
+        _open_obsidian_exporter()
 
     def _build_export_tab(self) -> QWidget:
         tab = QWidget()
@@ -1354,7 +1648,7 @@ class ObsidianExporterDialog(QDialog):
 
         # Template selector (mirrors Modelo tab)
         tmpl_row = QHBoxLayout()
-        tmpl_label = QLabel("Template:")
+        tmpl_label = QLabel(_t("lbl_template"))
         tmpl_label.setFixedWidth(120)
         self.export_tmpl_combo = QComboBox()
         for t in self._cfg.get("obs_templates", _OBS_DEFAULT_TEMPLATES):
@@ -1371,7 +1665,7 @@ class ObsidianExporterDialog(QDialog):
 
         # Deck selector
         deck_row = QHBoxLayout()
-        deck_label = QLabel("Source deck:")
+        deck_label = QLabel(_t("lbl_source_deck"))
         deck_label.setFixedWidth(120)
         self.deck_combo = QComboBox()
         for name in sorted(mw.col.decks.all_names()):
@@ -1383,7 +1677,7 @@ class ObsidianExporterDialog(QDialog):
         layout.addLayout(deck_row)
 
         # Card preview list
-        self.cards_label = QLabel("Cards:")
+        self.cards_label = QLabel(_t("lbl_cards"))
         layout.addWidget(self.cards_label)
         self.card_list = QListWidget()
         self.card_list.setEditTriggers(
@@ -1393,14 +1687,13 @@ class ObsidianExporterDialog(QDialog):
 
         # Vault path
         vault_row = QHBoxLayout()
-        vault_label = QLabel("Vault:")
+        vault_label = QLabel(_t("lbl_vault"))
         vault_label.setFixedWidth(120)
         self.vault_edit = QLineEdit()
         self.vault_edit.setReadOnly(True)
-        self.vault_edit.setPlaceholderText(
-            "Clique em Browse para selecionar o vault")
+        self.vault_edit.setPlaceholderText(_t("vault_hint"))
         self.vault_edit.setText(self._cfg.get("obsidian_vault_path", ""))
-        btn_vault = QPushButton("Browse...")
+        btn_vault = QPushButton(_t("btn_browse"))
         btn_vault.clicked.connect(self._on_browse_vault)
         vault_row.addWidget(vault_label)
         vault_row.addWidget(self.vault_edit, stretch=1)
@@ -1409,13 +1702,12 @@ class ObsidianExporterDialog(QDialog):
 
         # Output folder
         folder_row = QHBoxLayout()
-        folder_label = QLabel("Output folder:")
+        folder_label = QLabel(_t("lbl_output"))
         folder_label.setFixedWidth(120)
         self.folder_edit = QLineEdit()
-        self.folder_edit.setPlaceholderText(
-            "Pasta relativa dentro do vault (opcional)")
+        self.folder_edit.setPlaceholderText(_t("output_hint"))
         self.folder_edit.setText(self._cfg.get("obsidian_last_folder", ""))
-        btn_folder = QPushButton("Browse...")
+        btn_folder = QPushButton(_t("btn_browse"))
         btn_folder.clicked.connect(self._on_browse_output_folder)
         folder_row.addWidget(folder_label)
         folder_row.addWidget(self.folder_edit, stretch=1)
@@ -1424,11 +1716,10 @@ class ObsidianExporterDialog(QDialog):
 
         # Note title
         title_row = QHBoxLayout()
-        title_label = QLabel("Note title:")
+        title_label = QLabel(_t("lbl_note_title"))
         title_label.setFixedWidth(120)
         self.title_edit = QLineEdit()
-        self.title_edit.setPlaceholderText(
-            "ex: COM130 Semana 3 — Revisão Anki")
+        self.title_edit.setPlaceholderText(_t("title_hint"))
         title_row.addWidget(title_label)
         title_row.addWidget(self.title_edit, stretch=1)
         layout.addLayout(title_row)
@@ -1438,9 +1729,9 @@ class ObsidianExporterDialog(QDialog):
         # Buttons
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        cancel_btn = QPushButton("Cancelar")
+        cancel_btn = QPushButton(_t("btn_cancel_exp"))
         cancel_btn.clicked.connect(self.reject)
-        export_btn = QPushButton("Export →")
+        export_btn = QPushButton(_t("btn_export"))
         export_btn.setDefault(True)
         export_btn.clicked.connect(self._on_export)
         btn_row.addWidget(cancel_btn)
@@ -1458,7 +1749,7 @@ class ObsidianExporterDialog(QDialog):
 
         # ── Template selector row ─────────────────────────────────────────────
         tmpl_row = QHBoxLayout()
-        tmpl_row.addWidget(QLabel("Template:"))
+        tmpl_row.addWidget(QLabel(_t("lbl_template")))
         self.tmpl_combo = QComboBox()
         self.tmpl_combo.setMinimumWidth(140)
         for t in self._cfg.get("obs_templates", _OBS_DEFAULT_TEMPLATES):
@@ -1468,10 +1759,10 @@ class ObsidianExporterDialog(QDialog):
         idx = self.tmpl_combo.findText(active)
         self.tmpl_combo.setCurrentIndex(max(0, idx))
 
-        btn_new = QPushButton("Novo")
-        btn_dup = QPushButton("Duplicar")
-        btn_del = QPushButton("Excluir")
-        btn_save = QPushButton("Salvar")
+        btn_new = QPushButton(_t("btn_new"))
+        btn_dup = QPushButton(_t("btn_duplicate"))
+        btn_del = QPushButton(_t("btn_delete"))
+        btn_save = QPushButton(_t("btn_save"))
 
         tmpl_row.addWidget(self.tmpl_combo, stretch=1)
         tmpl_row.addWidget(btn_new)
@@ -1487,18 +1778,14 @@ class ObsidianExporterDialog(QDialog):
 
         # ── Filename ──────────────────────────────────────────────────────────
         fn_row = QHBoxLayout()
-        fn_label = QLabel("Nome do ficheiro:")
+        fn_label = QLabel(_t("lbl_filename"))
         fn_label.setFixedWidth(140)
         self.filename_edit = QLineEdit()
         fn_row.addWidget(fn_label)
         fn_row.addWidget(self.filename_edit, stretch=1)
         layout.addLayout(fn_row)
 
-        vars_hint = QLabel(
-            "Variáveis: {{title}}  {{date}}  {{deck}}  {{tags}}\n"
-            "{{cards}}  {{mc_cards}}  {{cloze_cards}}\n"
-            "{{cards_callouts}}  {{mc_cards_callouts}}  {{cloze_cards_callouts}}"
-        )
+        vars_hint = QLabel(_t("lbl_vars"))
         vars_hint.setStyleSheet("color: gray; font-size: 11px;")
         vars_hint.setWordWrap(True)
         layout.addWidget(vars_hint)
@@ -1508,13 +1795,13 @@ class ObsidianExporterDialog(QDialog):
         col_header = QHBoxLayout()
         col_header.setContentsMargins(0, 0, 0, 0)
         col_header.setSpacing(6)
-        lbl_type = QLabel("Tipo")
+        lbl_type = QLabel(_t("col_type"))
         lbl_type.setFixedWidth(110)
         lbl_type.setStyleSheet("color: #888; font-size: 11px;")
-        lbl_key = QLabel("Propriedade")
+        lbl_key = QLabel(_t("col_property"))
         lbl_key.setFixedWidth(120)
         lbl_key.setStyleSheet("color: #888; font-size: 11px;")
-        lbl_val = QLabel("Valor")
+        lbl_val = QLabel(_t("col_value"))
         lbl_val.setStyleSheet("color: #888; font-size: 11px;")
         lbl_del_spacer = QLabel()
         lbl_del_spacer.setFixedWidth(26)
@@ -1538,12 +1825,12 @@ class ObsidianExporterDialog(QDialog):
         layout.addWidget(scroll)
 
         prop_actions = QHBoxLayout()
-        add_prop_btn = QPushButton("+ Adicionar propriedade")
+        add_prop_btn = QPushButton(_t("btn_add_prop"))
         add_prop_btn.setFlat(True)
         add_prop_btn.setStyleSheet(
             "color: #6c9; text-align: left; padding: 2px 0;")
         add_prop_btn.clicked.connect(lambda: self._add_property_row())
-        import_prop_btn = QPushButton("Importar do Obsidian")
+        import_prop_btn = QPushButton(_t("btn_import_obs"))
         import_prop_btn.setFlat(True)
         import_prop_btn.setStyleSheet(
             "color: #69c; text-align: left; padding: 2px 0;")
@@ -1554,14 +1841,14 @@ class ObsidianExporterDialog(QDialog):
         layout.addLayout(prop_actions)
 
         # ── Content ───────────────────────────────────────────────────────────
-        layout.addWidget(QLabel("Conteúdo da nota:"))
+        layout.addWidget(QLabel(_t("lbl_content")))
         self.content_edit = QTextEdit()
         layout.addWidget(self.content_edit, stretch=1)
 
         # ── Bottom row ────────────────────────────────────────────────────────
         bottom_row = QHBoxLayout()
         bottom_row.addStretch()
-        reset_btn = QPushButton("Repor padrões")
+        reset_btn = QPushButton(_t("btn_reset"))
         bottom_row.addWidget(reset_btn)
         layout.addLayout(bottom_row)
 
@@ -1614,16 +1901,18 @@ class ObsidianExporterDialog(QDialog):
         self._all_tags = list(tag_set)
         mc_count = len(self._mc_notes)
         cloze_count = len(self._cloze_notes)
-        self.cards_label.setText(
-            f"Cards: {mc_count + cloze_count} total "
-            f"({mc_count} MC, {cloze_count} Cloze)"
-        )
+        total = mc_count + cloze_count
+        if total:
+            summary = _t("cards_summary", total=total, mc=mc_count, cloze=cloze_count)
+        else:
+            summary = _t("no_cards")
+        self.cards_label.setText(f"{_t('lbl_cards')} {summary}")
 
     # ── Browse handlers ──────────────────────────────────────────────────────
 
     def _on_browse_vault(self) -> None:
         path = QFileDialog.getExistingDirectory(
-            self, "Selecionar Vault do Obsidian",
+            self, _t("dlg_vault_title"),
             self._cfg.get("obsidian_vault_path", ""))
         if path:
             self.vault_edit.setText(path)
@@ -1633,7 +1922,7 @@ class ObsidianExporterDialog(QDialog):
     def _on_browse_output_folder(self) -> None:
         start = self._cfg.get("obsidian_vault_path", "") or ""
         path = QFileDialog.getExistingDirectory(
-            self, "Selecionar pasta de saída", start)
+            self, _t("dlg_folder_title"), start)
         if path:
             import os
             vault = self._cfg.get("obsidian_vault_path", "")
@@ -1690,30 +1979,24 @@ class ObsidianExporterDialog(QDialog):
 
         vault = self._cfg.get("obsidian_vault_path", "").strip()
         if not vault or not os.path.isdir(vault):
-            showWarning(
-                "Vault não configurado.\n"
-                "Configure o vault na aba Exportar antes de importar propriedades."
-            )
+            showWarning(_t("warn_no_vault_props"))
             return
 
         types_path = os.path.join(vault, ".obsidian", "types.json")
         if not os.path.isfile(types_path):
-            showWarning(
-                f"Ficheiro não encontrado:\n{types_path}\n\n"
-                "Certifica-te de que o vault está correto e tem propriedades definidas."
-            )
+            showWarning(_t("warn_types_not_found", path=types_path))
             return
 
         try:
             with open(types_path, encoding="utf-8") as f:
                 data = json.load(f)
         except Exception as e:
-            showWarning(f"Erro ao ler types.json:\n{e}")
+            showWarning(_t("warn_types_error", e=e))
             return
 
         types_dict: dict = data.get("types", {})
         if not types_dict:
-            showWarning("Nenhuma propriedade encontrada em types.json.")
+            showWarning(_t("warn_no_properties"))
             return
 
         # Save to config as {name: mapped_ptype} — not added as rows
@@ -1727,10 +2010,7 @@ class ObsidianExporterDialog(QDialog):
         current = self._read_ui_as_template()
         self._load_template_into_ui(current)
 
-        showInfo(
-            f"{len(known)} propriedade(s) disponíveis para selecionar.\n"
-            "Clica em '+ Adicionar propriedade' e escolhe da lista."
-        )
+        showInfo(_t("obs_props_imported", n=len(known)))
 
     # ── Property row helpers ─────────────────────────────────────────────────
 
@@ -1806,7 +2086,7 @@ class ObsidianExporterDialog(QDialog):
         self._save_config()
         from aqt.utils import showInfo
         name = self._cfg.get("obs_active_template", "")
-        showInfo(f"Template '{name}' guardado.")
+        showInfo(_t("template_saved", name=name))
 
     def _on_template_selected(self, index: int) -> None:
         self._save_active_to_config()
@@ -1823,13 +2103,13 @@ class ObsidianExporterDialog(QDialog):
 
     def _on_new_template(self) -> None:
         from aqt.utils import getText
-        name, ok = getText("Nome do novo template:", title="Novo template")
+        name, ok = getText(_t("dlg_new_tmpl_label"), title=_t("dlg_new_tmpl_title"))
         if not ok or not name.strip():
             return
         name = name.strip()
         if any(t["name"] == name for t in self._get_templates()):
             from aqt.utils import showWarning
-            showWarning(f"Já existe um template com o nome '{name}'.")
+            showWarning(_t("warn_tmpl_exists", name=name))
             return
         new_tmpl = {
             "name": name,
@@ -1851,14 +2131,14 @@ class ObsidianExporterDialog(QDialog):
         from aqt.utils import getText
         current = self._read_ui_as_template()
         suggested = f"Cópia de {current['name']}"
-        name, ok = getText("Nome do template duplicado:",
-                           default=suggested, title="Duplicar template")
+        name, ok = getText(_t("dlg_dup_tmpl_label"),
+                           default=suggested, title=_t("dlg_dup_tmpl_title"))
         if not ok or not name.strip():
             return
         name = name.strip()
         if any(t["name"] == name for t in self._get_templates()):
             from aqt.utils import showWarning
-            showWarning(f"Já existe um template com o nome '{name}'.")
+            showWarning(_t("warn_tmpl_exists", name=name))
             return
         dup = {**current, "name": name}
         self._get_templates().append(dup)
@@ -1875,12 +2155,12 @@ class ObsidianExporterDialog(QDialog):
         templates = self._get_templates()
         if len(templates) <= 1:
             from aqt.utils import showWarning
-            showWarning("Não é possível excluir o único template.")
+            showWarning(_t("warn_last_tmpl"))
             return
         name = self.tmpl_combo.currentText()
         reply = QMessageBox.question(
-            self, "Excluir template",
-            f"Excluir o template '{name}'?",
+            self, _t("dlg_del_tmpl_title"),
+            _t("dlg_del_tmpl_body", name=name),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -1919,9 +2199,7 @@ class ObsidianExporterDialog(QDialog):
 
         vault = self._cfg.get("obsidian_vault_path", "").strip()
         if not vault or not os.path.isdir(vault):
-            showWarning(
-                "Vault não configurado ou não encontrado.\n"
-                "Clique em Browse para selecionar o vault.")
+            showWarning(_t("warn_vault_missing"))
             return
 
         folder_rel = self.folder_edit.text().strip()
@@ -1929,8 +2207,7 @@ class ObsidianExporterDialog(QDialog):
         try:
             os.makedirs(output_dir, exist_ok=True)
         except OSError as e:
-            showWarning(
-                f"Não foi possível criar a pasta:\n{output_dir}\n\n{e}")
+            showWarning(_t("warn_mkdir_failed", path=output_dir, e=e))
             return
 
         deck_name = self.deck_combo.currentText()
@@ -1950,8 +2227,8 @@ class ObsidianExporterDialog(QDialog):
 
         if os.path.exists(filepath):
             reply = QMessageBox.question(
-                self, "Ficheiro já existe",
-                f"'{filename}' já existe na pasta de destino.\nSobrescrever?",
+                self, _t("confirm_overwrite_title"),
+                _t("confirm_overwrite_body", filename=filename),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if reply != QMessageBox.StandardButton.Yes:
@@ -1995,15 +2272,14 @@ class ObsidianExporterDialog(QDialog):
             with open(filepath, "w", encoding="utf-8") as f:
                 f.write(content)
         except OSError as e:
-            showWarning(
-                f"Não foi possível escrever o ficheiro:\n{filepath}\n\n{e}")
+            showWarning(_t("warn_write_failed", path=filepath, e=e))
             return
 
         self._cfg["obsidian_last_folder"] = folder_rel
         self._save_active_to_config()
         self._save_config()
 
-        showInfo(f"Exportado para Obsidian:\n{filepath}")
+        showInfo(_t("success_export", path=filepath))
         self.accept()
 
 
