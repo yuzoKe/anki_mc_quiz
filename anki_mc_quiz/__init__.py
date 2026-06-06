@@ -498,22 +498,34 @@ def parse_questions(text: str) -> list:
     Returns list of dicts with keys: question, A, B, C, D, E, answer, explanation
     """
 
-    text = text.strip()
-    # Strip preamble (title/heading) before the first numbered question.
-    # If a "1." or "1)" exists, discard everything before it.
-    # Fallback for unnumbered format: strip leading all-caps lines.
+    text = text.replace('\r\n', '\n').replace('\r', '\n').strip()
+    # Strip preamble before the first question.
+    # Numbered format (multiline): "^1." at start of line.
+    # Numbered format (single-line block): "\b1." at word boundary.
+    # Unnumbered format: drop leading lines that contain neither choices (A))
+    # nor an answer marker, since those lines are titles/headings.
     numbered = re.search(r'(?m)^1[\.\)]', text)
+    if not numbered:
+        numbered = re.search(r'\b1[\.\)]\s', text)
     if numbered:
         text = text[numbered.start():]
     else:
-        text = re.sub(r'^(?:[^\na-z]*\n)+\s*', '', text)
+        lines = text.split('\n')
+        while lines and 'A)' not in lines[0] and 'Resposta:' not in lines[0]:
+            lines.pop(0)
+        text = '\n'.join(lines)
 
     questions = []
 
-    # Match the full tail of each question as a single unit so the explanation
-    # boundary is captured by the regex rather than a fragile period heuristic.
+    # Match the full tail of each question as a single unit.
+    # Lookahead alternatives handle:
+    #   \n\s*\n         — blank line between questions
+    #   \n\d+[\.\)]     — numbered question on next line
+    #   \s+\d+[\.\)]\s  — numbered question on same line (single-line paste)
+    #   \n              — unnumbered questions, one per line
+    #   \Z              — end of string
     tail_re = re.compile(
-        r'Resposta:\s*([A-Ea-e])\s*\n?\s*Explica[çc][aã]o:\s*(.+?)(?=\n\s*\n|\n\d+[\.\)]|\Z)',
+        r'Resposta:\s*([A-Ea-e])\s*\n?\s*Explica[çc][aã]o:\s*(.+?)(?=\n\s*\n|\n\d+[\.\)]|\s+\d+[\.\)]\s|\n|\Z)',
         re.IGNORECASE | re.DOTALL
     )
     choice_re = re.compile(
