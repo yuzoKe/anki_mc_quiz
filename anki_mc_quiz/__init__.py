@@ -1159,13 +1159,12 @@ class ImporterDialog(QDialog):
         # ── Language toggle ───────────────────────────────────────────────
         lang_row = QHBoxLayout()
         lang_row.addStretch()
-        for code, label in [("pt", "PT"), ("en", "EN")]:
-            lb = QPushButton(label)
-            lb.setFixedWidth(40)
-            if _lang == code:
-                lb.setEnabled(False)
-            lb.clicked.connect(lambda _, c=code: self._switch_lang(c))
-            lang_row.addWidget(lb)
+        for code, disp in [("pt", "PT"), ("en", "EN")]:
+            lbl = QLabel(f"<b>{disp}</b>" if _lang == code else disp)
+            lbl.setStyleSheet("color: #ccc; padding: 2px 8px; border: 1px solid #555; border-radius: 3px;")
+            lbl.setCursor(Qt.CursorShape.PointingHandCursor)
+            lbl.mousePressEvent = lambda _, c=code: self._switch_lang(c)
+            lang_row.addWidget(lbl)
         layout.addLayout(lang_row)
 
         # ── Prompt copy buttons ───────────────────────────────────────────
@@ -1617,13 +1616,12 @@ class ObsidianExporterDialog(QDialog):
         # ── Language toggle ───────────────────────────────────────────────
         lang_row = QHBoxLayout()
         lang_row.addStretch()
-        for code, label in [("pt", "PT"), ("en", "EN")]:
-            lb = QPushButton(label)
-            lb.setFixedWidth(40)
-            if _lang == code:
-                lb.setEnabled(False)
-            lb.clicked.connect(lambda _, c=code: self._switch_lang(c))
-            lang_row.addWidget(lb)
+        for code, disp in [("pt", "PT"), ("en", "EN")]:
+            lbl = QLabel(f"<b>{disp}</b>" if _lang == code else disp)
+            lbl.setStyleSheet("color: #ccc; padding: 2px 8px; border: 1px solid #555; border-radius: 3px;")
+            lbl.setCursor(Qt.CursorShape.PointingHandCursor)
+            lbl.mousePressEvent = lambda _, c=code: self._switch_lang(c)
+            lang_row.addWidget(lbl)
         layout.addLayout(lang_row)
 
         tabs = QTabWidget()
