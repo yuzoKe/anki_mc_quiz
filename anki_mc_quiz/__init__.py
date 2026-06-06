@@ -1164,7 +1164,9 @@ class ImporterDialog(QDialog):
             lb.setFixedWidth(34)
             lb.setFlat(True)
             if _lang == code:
-                lb.setStyleSheet("font-weight: bold; text-decoration: underline;")
+                lb.setStyleSheet("color: white; font-weight: bold; text-decoration: underline; border: none;")
+            else:
+                lb.setStyleSheet("color: #888; border: none;")
             lb.clicked.connect(lambda _, c=code: self._switch_lang(c))
             lang_row.addWidget(lb)
         layout.addLayout(lang_row)
@@ -1623,7 +1625,9 @@ class ObsidianExporterDialog(QDialog):
             lb.setFixedWidth(34)
             lb.setFlat(True)
             if _lang == code:
-                lb.setStyleSheet("font-weight: bold; text-decoration: underline;")
+                lb.setStyleSheet("color: white; font-weight: bold; text-decoration: underline; border: none;")
+            else:
+                lb.setStyleSheet("color: #888; border: none;")
             lb.clicked.connect(lambda _, c=code: self._switch_lang(c))
             lang_row.addWidget(lb)
         layout.addLayout(lang_row)
