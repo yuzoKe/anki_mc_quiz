@@ -2,49 +2,142 @@
 
 **PT** · [EN below](#english)
 
-Plugin para o Anki que adiciona um tipo de nota de múltipla escolha interativo. As alternativas aparecem como botões clicáveis durante a revisão — com feedback visual imediato de certo ou errado — sem depender de internet ou API externa.
+Addon para o Anki que automatiza o fluxo de estudo com flashcards de múltipla escolha e Cloze gerados pelo NotebookLM, com exportação para notas no Obsidian.
+
+---
 
 ## Funcionalidades
 
-- Até 5 alternativas (A–E) por questão
-- Alternativas em branco são ocultadas automaticamente
-- Ordem das alternativas embaralhada a cada revisão
-- Feedback visual ao clicar: verde para certo, vermelho para errado
-- Campo de explicação opcional (exibido no verso do card)
+- **Note type interativo** — múltipla escolha com alternativas embaralhadas e feedback visual imediato
+- **Import from NotebookLM** — cola o texto gerado pelo NotebookLM e importa cards MC e Cloze automaticamente
+- **Export to Obsidian** — exporta os cards de um baralho para uma nota `.md` com frontmatter YAML customizável
 - Funciona 100% offline
+
+---
 
 ## Instalação
 
 ### Via AnkiWeb *(em breve)*
 Pesquise por **"MC Quiz"** na loja de addons do Anki.
 
-### Manual (desenvolvimento)
-1. Clone este repositório
+### Manual
+1. Baixe ou clone este repositório
 2. Copie a pasta `anki_mc_quiz/` para o diretório de addons do Anki:
    - **Windows:** `%APPDATA%\Anki2\addons21\`
    - **macOS:** `~/Library/Application Support/Anki2/addons21/`
    - **Linux:** `~/.local/share/Anki2/addons21/`
 3. Reinicie o Anki
 
-O note type **"Multiple Choice Quiz"** será criado automaticamente na primeira inicialização.
+O note type **"Multiple Choice Quiz"** é criado automaticamente na primeira inicialização.
+
+---
 
 ## Como usar
 
-1. Crie um novo card e selecione o tipo **Multiple Choice Quiz**
-2. Preencha os campos:
-   - `Question` — o enunciado da questão
-   - `A`, `B`, `C`, `D`, `E` — as alternativas (deixe em branco para ocultar)
-   - `Answer` — a letra correta (`A`, `B`, `C`, `D` ou `E`)
-   - `Explanation` — explicação opcional exibida no verso
-3. Durante a revisão, clique na alternativa que achar correta
+### 1. Gerando o conteúdo no NotebookLM
+
+Abra o NotebookLM com as suas fontes de estudo e use um dos prompts abaixo. Os prompts estão disponíveis no próprio addon via **Ferramentas > Import from NotebookLM** — basta clicar no botão para copiar.
+
+**Prompt Múltipla Escolha** — gera questões no formato:
+```
+1. [Enunciado]
+A) [Alternativa]
+...
+Resposta: A
+Explicação: [Uma frase]
+```
+
+**Prompt Cloze** — gera flashcards no formato:
+```
+{{c1::termo}} é/são [definição em uma frase].
+```
+
+---
+
+### 2. Importando para o Anki — Import from NotebookLM
+
+**Ferramentas > Import from NotebookLM**
+
+1. Clique em **Prompt MC 📋** ou **Prompt Cloze 📋** para copiar o prompt
+2. Cole o prompt no NotebookLM e gere o relatório
+3. Copie o texto gerado e cole na aba correspondente do dialog
+4. A preview é atualizada automaticamente conforme você cola
+5. Selecione o baralho de destino
+6. Adicione etiquetas na barra de etiquetas (pressione `Enter` para confirmar cada tag; as etiquetas ficam salvas entre sessões)
+7. Clique em **Import →** — uma caixa de confirmação mostra quantos cards serão adicionados e quais tags serão aplicadas
+
+Duplicatas são detectadas automaticamente e ignoradas.
+
+---
+
+### 3. Revisando no Anki
+
+Durante a revisão, as alternativas aparecem como botões clicáveis em ordem aleatória:
+- **Verde** — resposta correta
+- **Vermelho** — resposta errada (a correta é revelada em seguida)
+- A explicação opcional aparece no verso do card
+
+---
+
+### 4. Exportando para o Obsidian — Export to Obsidian
+
+**Ferramentas > Export to Obsidian**
+
+#### Aba Exportar
+1. Selecione o **template** e o **baralho** de origem
+2. Confirme o caminho do **vault** e a **pasta de saída**
+3. Digite o **título** da nota
+4. Clique em **Export →**
+
+#### Aba Modelo
+Customiza o template de exportação:
+
+| Campo | Descrição |
+|---|---|
+| Nome do ficheiro | Nome do arquivo gerado. Ex: `{{title}}.md` |
+| Propriedades | Linhas de frontmatter YAML |
+| Conteúdo da nota | Corpo da nota em Markdown |
+
+**Variáveis disponíveis:**
+
+| Variável | Valor |
+|---|---|
+| `{{title}}` | Título digitado no campo "Note title" |
+| `{{date}}` | Data de hoje (ISO) |
+| `{{deck}}` | Nome do baralho selecionado |
+| `{{tags}}` | Tags únicas do baralho em formato YAML (`  - tag`) |
+| `{{cards}}` | Todos os cards (MC + Cloze) em Markdown |
+| `{{mc_cards}}` | Apenas questões MC |
+| `{{cloze_cards}}` | Apenas cards Cloze |
+| `{{cards_callouts}}` | MC + Cloze como callouts Obsidian |
+| `{{mc_cards_callouts}}` | MC como callouts `> [!question]` |
+| `{{cloze_cards_callouts}}` | Cloze como callouts `> [!info]` |
+
+**Importar propriedades do Obsidian:** o botão "Importar do Obsidian" lê o `types.json` do vault e popula automaticamente o dropdown de tipos de propriedade.
+
+**Templates múltiplos:** crie um template por disciplina. O baralho selecionado é memorizado por template.
+
+---
+
+## Campos do note type
+
+| Campo | Descrição |
+|---|---|
+| `Question` | Enunciado da questão |
+| `A` – `E` | Alternativas (campos em branco são ocultados) |
+| `Answer` | Letra correta (`A`, `B`, `C`, `D` ou `E`) |
+| `Explanation` | Explicação opcional (exibida no verso) |
+
+---
 
 ## Estrutura do projeto
 
 ```
 anki_mc_quiz/
 ├── anki_mc_quiz/
-│   ├── __init__.py      # Entry point — cria o note type e registra o addon
-│   └── manifest.json    # Metadados do addon para o AnkiWeb
+│   ├── __init__.py      # Lógica principal do addon
+│   ├── manifest.json    # Metadados do addon
+│   └── meta.json        # Config persistida (criado automaticamente)
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -56,53 +149,133 @@ anki_mc_quiz/
 
 ## English
 
-An Anki addon that adds an interactive multiple choice note type. Choices appear as clickable buttons during review — with immediate visual feedback — no internet or external API required.
+An Anki addon that automates the study workflow with multiple choice and Cloze flashcards generated by NotebookLM, with export to Obsidian notes.
+
+---
 
 ## Features
 
-- Up to 5 choices (A–E) per card
-- Blank choices are hidden automatically
-- Answer order shuffled on every review
-- Visual feedback on click: green for correct, red for wrong
-- Optional explanation field (shown on the card back)
+- **Interactive note type** — multiple choice with shuffled choices and immediate visual feedback
+- **Import from NotebookLM** — paste the generated text and automatically import MC and Cloze cards
+- **Export to Obsidian** — export cards from a deck to a `.md` note with customizable YAML frontmatter
 - Works 100% offline
+
+---
 
 ## Installation
 
 ### Via AnkiWeb *(coming soon)*
 Search for **"MC Quiz"** in the Anki addon store.
 
-### Manual (development)
-1. Clone this repository
+### Manual
+1. Download or clone this repository
 2. Copy the `anki_mc_quiz/` folder to your Anki addons directory:
    - **Windows:** `%APPDATA%\Anki2\addons21\`
    - **macOS:** `~/Library/Application Support/Anki2/addons21/`
    - **Linux:** `~/.local/share/Anki2/addons21/`
 3. Restart Anki
 
-The **"Multiple Choice Quiz"** note type will be created automatically on first launch.
+The **"Multiple Choice Quiz"** note type is created automatically on first launch.
+
+---
 
 ## How to use
 
-1. Create a new card and select the **Multiple Choice Quiz** type
-2. Fill in the fields:
-   - `Question` — the question text
-   - `A`, `B`, `C`, `D`, `E` — the choices (leave blank to hide)
-   - `Answer` — the correct letter (`A`, `B`, `C`, `D`, or `E`)
-   - `Explanation` — optional explanation shown on the back
-3. During review, click the choice you think is correct
+### 1. Generating content in NotebookLM
 
-## Project structure
+Open NotebookLM with your study sources and use one of the prompts below. The prompts are available directly in the addon via **Tools > Import from NotebookLM** — just click the button to copy.
 
+**Multiple Choice Prompt** — generates questions in the format:
 ```
-anki_mc_quiz/
-├── anki_mc_quiz/
-│   ├── __init__.py      # Entry point — creates the note type and registers the addon
-│   └── manifest.json    # Addon metadata for AnkiWeb
-├── .gitignore
-├── LICENSE
-└── README.md
+1. [Question]
+A) [Choice]
+...
+Resposta: A
+Explicação: [One sentence]
 ```
+
+**Cloze Prompt** — generates flashcards in the format:
+```
+{{c1::term}} is/are [definition in one sentence].
+```
+
+---
+
+### 2. Importing into Anki — Import from NotebookLM
+
+**Tools > Import from NotebookLM**
+
+1. Click **Prompt MC 📋** or **Prompt Cloze 📋** to copy the prompt
+2. Paste the prompt into NotebookLM and generate the report
+3. Copy the generated text and paste it into the corresponding tab
+4. The preview updates automatically as you paste
+5. Select the destination deck
+6. Add tags in the tag bar (press `Enter` to confirm each tag; tags are saved between sessions)
+7. Click **Import →** — a confirmation box shows how many cards will be added and which tags will be applied
+
+Duplicates are detected automatically and skipped.
+
+---
+
+### 3. Reviewing in Anki
+
+During review, choices appear as clickable buttons in random order:
+- **Green** — correct answer
+- **Red** — wrong answer (correct one is revealed)
+- The optional explanation appears on the back of the card
+
+---
+
+### 4. Exporting to Obsidian — Export to Obsidian
+
+**Tools > Export to Obsidian**
+
+#### Export tab
+1. Select the **template** and the source **deck**
+2. Set the **vault** path and **output folder**
+3. Type the **note title**
+4. Click **Export →**
+
+#### Model tab
+Customize the export template:
+
+| Field | Description |
+|---|---|
+| File name | Name of the generated file. Ex: `{{title}}.md` |
+| Properties | YAML frontmatter rows |
+| Note content | Note body in Markdown |
+
+**Available variables:**
+
+| Variable | Value |
+|---|---|
+| `{{title}}` | Title typed in the "Note title" field |
+| `{{date}}` | Today's date (ISO) |
+| `{{deck}}` | Selected deck name |
+| `{{tags}}` | Unique deck tags in YAML format (`  - tag`) |
+| `{{cards}}` | All cards (MC + Cloze) in Markdown |
+| `{{mc_cards}}` | MC questions only |
+| `{{cloze_cards}}` | Cloze cards only |
+| `{{cards_callouts}}` | MC + Cloze as Obsidian callouts |
+| `{{mc_cards_callouts}}` | MC as `> [!question]` callouts |
+| `{{cloze_cards_callouts}}` | Cloze as `> [!info]` callouts |
+
+**Import Obsidian properties:** the "Importar do Obsidian" button reads `types.json` from your vault and automatically populates the property type dropdown.
+
+**Multiple templates:** create one template per subject. The selected deck is remembered per template.
+
+---
+
+## Note type fields
+
+| Field | Description |
+|---|---|
+| `Question` | Question text |
+| `A` – `E` | Choices (blank fields are hidden) |
+| `Answer` | Correct letter (`A`, `B`, `C`, `D`, or `E`) |
+| `Explanation` | Optional explanation (shown on the back) |
+
+---
 
 ## License
 
