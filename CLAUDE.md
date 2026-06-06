@@ -12,6 +12,10 @@
   - Depois reiniciar o Anki
 - **Não usar `deploy.bat`** — tem `pause` que bloqueia shells não-interativos
 
+## Qt no Windows — armadilhas conhecidas
+- **`QPushButton` ignora `color:` via CSS** no Windows (usa renderizador nativo). Para botões com texto colorido ou styling customizado, usar `QLabel` com `mousePressEvent` e `setCursor(Qt.CursorShape.PointingHandCursor)`
+- `setFlat(True)` em botões pode tornar o texto invisível em temas escuros
+
 ## Anki API — padrões usados no projeto
 - `mw.col.decks.all_names()` — lista de nomes de baralhos
 - `mw.col.decks.id(name)` — ID do baralho pelo nome
@@ -31,19 +35,21 @@
 ## Estrutura do arquivo __init__.py
 
 ```
-Linhas ~1-20    Imports (Qt, aqt, re)
-Linhas ~22-60   Constantes: NOTE_TYPE_NAME, PROMPT_MC, PROMPT_CLOZE, FIELDS
-Linhas ~62-410  Templates: FRONT_TEMPLATE, BACK_TEMPLATE, CARD_CSS
-Linhas ~412-475 TEMPLATE_VERSION + create_note_type()
-Linhas ~477-560 Parsers: parse_questions(), parse_cloze()
-Linhas ~562-680 Helpers Obsidian: _anki_tags_to_obsidian(), _format_mc_cards(),
-                _format_cloze_cards(), _format_mc_callouts(), _format_cloze_callouts(),
-                _render_template(), _yaml_quote(), _build_obsidian_note()
-Linhas ~680+    ImporterDialog (QDialog) — 2 abas: MC e Cloze
-Linhas ~980+    _PROP_TYPES, _OBS_DEFAULT_*, _PropertyRow, ObsidianExporterDialog
-Linhas ~1850+   Startup: on_main_window_ready(), _register_menu(),
-                _open_importer(), _open_obsidian_exporter()
-                hook: gui_hooks.main_window_did_init.append(on_main_window_ready)
+Linhas ~1-20     Imports (Qt, aqt, re)
+Linhas ~22-60    Constantes: NOTE_TYPE_NAME, PROMPT_MC, PROMPT_CLOZE, FIELDS
+Linhas ~62-410   Templates: FRONT_TEMPLATE, BACK_TEMPLATE, CARD_CSS
+Linhas ~412-475  TEMPLATE_VERSION + create_note_type()
+Linhas ~477-560  Parsers: parse_questions(), parse_cloze()
+Linhas ~562-680  Helpers Obsidian: _anki_tags_to_obsidian(), _format_mc_cards(),
+                 _format_cloze_cards(), _format_mc_callouts(), _format_cloze_callouts(),
+                 _render_template(), _yaml_quote(), _build_obsidian_note()
+Linhas ~680-750  i18n: _STRINGS{}, _get_lang(), _lang, _t(), _set_lang()
+Linhas ~750+     _TagChipEditor (QWidget com chips + TagEdit)
+Linhas ~850+     ImporterDialog (QDialog) — 2 abas: MC e Cloze
+Linhas ~1480+    _PROP_TYPES, _OBS_DEFAULT_*, _PropertyRow, ObsidianExporterDialog
+Linhas ~2280+    Startup: on_main_window_ready(), _register_menu(),
+                 _open_importer(), _open_obsidian_exporter()
+                 hook: gui_hooks.main_window_did_init.append(on_main_window_ready)
 ```
 
 ## Funcionalidades implementadas
@@ -58,23 +64,44 @@ Linhas ~1850+   Startup: on_main_window_ready(), _register_menu(),
 - **Back**: mostra todas as alternativas com a correta destacada + banner verde + explicação opcional
 - Dark theme via `CARD_CSS`
 
-### 3. ImporterDialog — Menu Tools > Import from NotebookLM
+### 3. i18n — PT/EN toggle
+- `_STRINGS: dict` com chaves `"pt"` e `"en"`, ~80 strings cada
+- `_lang: str` — variável global, lida do `meta.json` na inicialização
+- `_t(key, **kw) -> str` — lookup com fallback para PT; suporta `.format(**kw)`
+- `_set_lang(lang)` — persiste escolha em `meta.json`
+- Ambos os dialogs têm toggle **PT | EN** no canto superior direito
+  - Implementado como `QLabel` (não QPushButton — ver armadilha Qt acima)
+  - Ativo: `<b>PT</b>`, inativo clicável com cursor de mão
+  - Ao clicar: salva lang, fecha dialog, reabre (`_switch_lang()`)
+- `meta.json` guarda `"language": "pt"` ou `"language": "en"`
+
+### 4. ImporterDialog — Menu Tools > Import from NotebookLM
 Janela Qt com layout:
 ```
+[PT] [EN]  (canto superior direito)
 [Prompt MC 📋]  [Prompt Cloze 📋]
-[Tab: Multiple Choice | Cloze]
-  Cada aba: QTextEdit (paste) + QListWidget preview (atualiza via textChanged)
-[Destination deck: QComboBox]
-[Etiquetas: TagEdit (autocomplete nativo Anki)]
-[Cancel]  [Import →]
+[Tab: Múltipla Escolha | Cloze]
+  Cada aba: instrução + QTextEdit (paste) + QLabel "Preview:" + QListWidget (h=110)
+[Baralho de destino: QComboBox]
+[Etiquetas: _TagChipEditor]
+[Cancelar]  [Importar →]
 ```
+
+#### _TagChipEditor
+- `QWidget` com `QScrollArea` (h=36) de chips + `TagEdit` (autocomplete Anki)
+- Chips são `QFrame` com `QLabel` + botão `×`; clicar `×` remove a tag
+- `set_tags(list)` / `get_tags() -> list` — inclui texto não confirmado do input
+- Enter no `TagEdit` adiciona chip (event filter intercepta `Key_Return`/`Key_Enter` e consome o evento — evita disparar o botão default do dialog)
+- Tags persistidas em `meta.json` como `"importer_tags": [...]`
+- `_load_tags()` / `_save_tags()` — chamados em `__init__` e `closeEvent`
 
 #### parse_questions(text) → list[dict]
 - Remove preamble antes do primeiro `1.` (título do relatório NotebookLM)
-- Fallback: remove linhas ALL CAPS iniciais (formato sem numeração)
-- Regex de "cauda": `Resposta: [A-E] Explicação: frase.` como unidade atômica
-- Suporta formato numerado (`1. Enunciado`) e sem numeração
-- Retorna lista de dicts com chaves: `question, A, B, C, D, E, answer, explanation`
+- Fallback linha-a-linha: descarta linhas até encontrar `A)` ou `Resposta:`
+- Regex `tail_re`: `Resposta: [A-E]\nExplicação: frase` como unidade atômica
+- Lookahead: `\n\n`, `\n\d+[.\)]`, `\s+\d+[.\)]\s`, `\n`, `\Z`
+- Suporta: numerado multiline, numerado single-line, sem numeração com `\n`, sem numeração single-line
+- Retorna lista de dicts: `question, A, B, C, D, E, answer, explanation`
 
 #### parse_cloze(text) → list[str]
 - Filtra linhas não-vazias que contêm `{{c` (marcador Cloze)
@@ -84,15 +111,16 @@ Janela Qt com layout:
 - `_is_duplicate_cloze(card_text)`: query `"note:Cloze" "Text:{card_text}"`
 - Duplicatas puladas; contagem exibida no relatório final
 
-#### Tags
-- `_get_tags()`: `mw.col.tags.split(self.tags_input.text())`
-- Aplicadas a todas as notas da sessão
+#### Confirmação antes de importar
+- `QMessageBox.question()` mostra: nº de cards, baralho, tags
+- Tanto para MC (`_import_mc`) quanto Cloze (`_import_cloze`)
 
-### 4. ObsidianExporterDialog — Menu Tools > Export to Obsidian
+### 5. ObsidianExporterDialog — Menu Tools > Export to Obsidian
 Janela Qt com 2 abas:
 
 **Aba "Exportar":**
 ```
+[PT] [EN]  (canto superior direito)
 [Template: QComboBox]  ← espelha o combo do Modelo; troca restaura deck salvo
 [Source deck: QComboBox]
 [Cards: N total (X MC, Y Cloze)  QListWidget h=120]
@@ -159,6 +187,7 @@ Janela Qt com 2 abas:
 ```json
 {
   "config": {
+    "language": "pt",
     "obsidian_vault_path": "",
     "obsidian_last_folder": "",
     "obs_active_template": "Default",
@@ -171,7 +200,8 @@ Janela Qt com 2 abas:
       }
     ],
     "obs_tmpl_deck_link": {"Default": "deck name"},
-    "obs_known_properties": {"Semana": "list", "nota_semana": "text"}
+    "obs_known_properties": {"Semana": "list", "nota_semana": "text"},
+    "importer_tags": ["UNIVESP::COM130"]
   }
 }
 ```
@@ -185,10 +215,11 @@ Janela Qt com 2 abas:
 - Ao trocar deck, salva `obs_tmpl_deck_link[template_name] = deck_name`
 - Ao trocar template (no combo do Exportar), restaura o deck salvo para aquele template
 
-### 5. Botões de prompt (clipboard)
+### 6. Botões de prompt (clipboard)
 - "Prompt Múltipla Escolha 📋" e "Prompt Cloze 📋" no topo do ImporterDialog
 - Copia `PROMPT_MC` / `PROMPT_CLOZE` para o clipboard
 - Feedback visual: texto muda para "Copiado! ✓" por 1.5s via QTimer
+- `_copy_to_clipboard(text, btn, original_key, copied_key)` — usa chaves `_t()` para ambos os estados
 
 ## Contexto do projeto
 - Desenvolvido durante o Clube da Programação da Laura Dubugras (4 semanas)
