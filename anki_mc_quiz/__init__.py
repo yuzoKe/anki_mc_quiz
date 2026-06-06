@@ -13,7 +13,7 @@ from aqt.qt import (
     QTextEdit, QComboBox, QPushButton, QTabWidget, QWidget,
     QListWidget, QAbstractItemView, QListWidgetItem,
     QLineEdit, QFileDialog, QMessageBox,
-    QScrollArea, QFrame, QApplication, QStyle, Qt
+    QScrollArea, QFrame, QApplication, QStyle, Qt, QEvent
 )
 import re
 from aqt import mw, gui_hooks
@@ -557,7 +557,7 @@ def parse_questions(text: str) -> list:
         if i == 0:
             raw_question = text[:choices_start].strip()
         else:
-            raw_question = text[tail_matches[i - 1].end()                                                        :choices_start].strip()
+            raw_question = text[tail_matches[i - 1].end()                                :choices_start].strip()
 
         # Strip leading question numbers like "1. " or "1) "
         raw_question = re.sub(r'^\d+[\.\)]\s*', '', raw_question)
@@ -669,8 +669,8 @@ def _yaml_quote(value: str) -> str:
 
 
 def _build_obsidian_note(title: str, deck_name: str, obs_tags: list,
-                          mc_notes: list, cloze_notes: list,
-                          tmpl_properties: str, tmpl_content: str) -> str:
+                         mc_notes: list, cloze_notes: list,
+                         tmpl_properties: str, tmpl_content: str) -> str:
     from datetime import date
     tags_yaml = "\n".join(f"  - {t}" for t in obs_tags)
     mc_str = _format_mc_cards(mc_notes) if mc_notes else ""
@@ -725,16 +725,26 @@ class _TagChipEditor(QWidget):
         chip_scroll.setWidget(self._chip_container)
         chip_scroll.setWidgetResizable(True)
         chip_scroll.setFixedHeight(36)
-        chip_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        chip_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        chip_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        chip_scroll.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         chip_scroll.setFrameShape(QFrame.Shape.NoFrame)
 
         self._input = TagEdit(self)
         self._input.setPlaceholderText("adicionar etiqueta…")
         self._input.editingFinished.connect(self._commit_input)
+        self._input.installEventFilter(self)
 
         outer.addWidget(chip_scroll)
         outer.addWidget(self._input)
+
+    def eventFilter(self, obj, event) -> bool:
+        if obj is self._input and event.type() == QEvent.Type.KeyPress:
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self._commit_input()
+                return True  # consume — don't let Enter trigger the Import button
+        return super().eventFilter(obj, event)
 
     def setCol(self, col) -> None:
         self._input.setCol(col)
@@ -777,10 +787,15 @@ class _TagChipEditor(QWidget):
             del_btn.clicked.connect(lambda _, t=tag: self._remove(t))
             row.addWidget(lbl)
             row.addWidget(del_btn)
-            self._chip_layout.insertWidget(self._chip_layout.count() - 1, frame)
+            self._chip_layout.insertWidget(
+                self._chip_layout.count() - 1, frame)
 
     def _remove(self, tag: str) -> None:
         self._tags = [t for t in self._tags if t != tag]
+        self._rebuild()
+
+    def set_tags(self, tags: list) -> None:
+        self._tags = list(tags)
         self._rebuild()
 
     def get_tags(self) -> list:
@@ -817,6 +832,44 @@ class ImporterDialog(QDialog):
         self.setMinimumWidth(560)
         self.setMinimumHeight(620)
         self._build_ui()
+        self.tags_input.set_tags(self._load_tags())
+
+    # ── Tag persistence ───────────────────────────────────────────────────
+
+    def _meta_path(self) -> str:
+        import os
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), "meta.json")
+
+    def _load_tags(self) -> list:
+        import json
+        import os
+        path = self._meta_path()
+        if os.path.isfile(path):
+            try:
+                data = json.loads(open(path, encoding="utf-8-sig").read())
+                return data.get("config", {}).get("importer_tags", [])
+            except Exception:
+                pass
+        return []
+
+    def _save_tags(self) -> None:
+        import json
+        import os
+        path = self._meta_path()
+        try:
+            data: dict = {}
+            if os.path.isfile(path):
+                data = json.loads(open(path, encoding="utf-8").read())
+            data.setdefault("config", {})[
+                "importer_tags"] = self.tags_input.get_tags()
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+        except Exception:
+            pass
+
+    def closeEvent(self, event) -> None:
+        self._save_tags()
+        super().closeEvent(event)
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -1009,6 +1062,19 @@ class ImporterDialog(QDialog):
             return
 
         deck_name = self.deck_combo.currentText()
+        tags = self._get_tags()
+        tags_str = ", ".join(tags) if tags else "(nenhuma)"
+        reply = QMessageBox.question(
+            self, "Confirmar importação",
+            f"<b>{len(questions)}</b> card(s) serão adicionado(s)<br>"
+            f"Baralho: <b>{deck_name}</b><br>"
+            f"Etiquetas: <b>{tags_str}</b><br><br>"
+            "Deseja importar?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
         deck_id = mw.col.decks.id(deck_name)
         mw.col.decks.select(deck_id)
 
@@ -1069,6 +1135,19 @@ class ImporterDialog(QDialog):
             return
 
         deck_name = self.deck_combo.currentText()
+        tags = self._get_tags()
+        tags_str = ", ".join(tags) if tags else "(nenhuma)"
+        reply = QMessageBox.question(
+            self, "Confirmar importação",
+            f"<b>{len(cards)}</b> card(s) Cloze encontrado(s)<br>"
+            f"Baralho: <b>{deck_name}</b><br>"
+            f"Etiquetas: <b>{tags_str}</b><br><br>"
+            "Deseja importar?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
         deck_id = mw.col.decks.id(deck_name)
         mw.col.decks.select(deck_id)
 
@@ -1333,7 +1412,8 @@ class ObsidianExporterDialog(QDialog):
         folder_label = QLabel("Output folder:")
         folder_label.setFixedWidth(120)
         self.folder_edit = QLineEdit()
-        self.folder_edit.setPlaceholderText("Pasta relativa dentro do vault (opcional)")
+        self.folder_edit.setPlaceholderText(
+            "Pasta relativa dentro do vault (opcional)")
         self.folder_edit.setText(self._cfg.get("obsidian_last_folder", ""))
         btn_folder = QPushButton("Browse...")
         btn_folder.clicked.connect(self._on_browse_output_folder)
@@ -1347,7 +1427,8 @@ class ObsidianExporterDialog(QDialog):
         title_label = QLabel("Note title:")
         title_label.setFixedWidth(120)
         self.title_edit = QLineEdit()
-        self.title_edit.setPlaceholderText("ex: COM130 Semana 3 — Revisão Anki")
+        self.title_edit.setPlaceholderText(
+            "ex: COM130 Semana 3 — Revisão Anki")
         title_row.addWidget(title_label)
         title_row.addWidget(self.title_edit, stretch=1)
         layout.addLayout(title_row)
@@ -1459,11 +1540,13 @@ class ObsidianExporterDialog(QDialog):
         prop_actions = QHBoxLayout()
         add_prop_btn = QPushButton("+ Adicionar propriedade")
         add_prop_btn.setFlat(True)
-        add_prop_btn.setStyleSheet("color: #6c9; text-align: left; padding: 2px 0;")
+        add_prop_btn.setStyleSheet(
+            "color: #6c9; text-align: left; padding: 2px 0;")
         add_prop_btn.clicked.connect(lambda: self._add_property_row())
         import_prop_btn = QPushButton("Importar do Obsidian")
         import_prop_btn.setFlat(True)
-        import_prop_btn.setStyleSheet("color: #69c; text-align: left; padding: 2px 0;")
+        import_prop_btn.setStyleSheet(
+            "color: #69c; text-align: left; padding: 2px 0;")
         import_prop_btn.clicked.connect(self._on_import_obsidian_properties)
         prop_actions.addWidget(add_prop_btn)
         prop_actions.addStretch()
@@ -1585,7 +1668,8 @@ class ObsidianExporterDialog(QDialog):
     def _on_deck_changed(self, deck_name: str) -> None:
         tmpl_name = self._cfg.get("obs_active_template", "")
         if tmpl_name:
-            self._cfg.setdefault("obs_tmpl_deck_link", {})[tmpl_name] = deck_name
+            self._cfg.setdefault("obs_tmpl_deck_link", {})[
+                tmpl_name] = deck_name
 
     # ── Obsidian property import ─────────────────────────────────────────────
 
@@ -1600,7 +1684,8 @@ class ObsidianExporterDialog(QDialog):
     }
 
     def _on_import_obsidian_properties(self) -> None:
-        import json, os
+        import json
+        import os
         from aqt.utils import showWarning, showInfo
 
         vault = self._cfg.get("obsidian_vault_path", "").strip()
@@ -1691,12 +1776,14 @@ class ObsidianExporterDialog(QDialog):
             key, val, *rest = row_data
             ptype = rest[0] if rest else "text"
             self._add_property_row(key, val, ptype)
-        self.content_edit.setPlainText(tmpl.get("content", _OBS_DEFAULT_CONTENT))
+        self.content_edit.setPlainText(
+            tmpl.get("content", _OBS_DEFAULT_CONTENT))
 
     def _read_ui_as_template(self) -> dict:
         # Use obs_active_template as the name source — tmpl_combo.currentText() may
         # already reflect the NEW selection when this is called during a switch.
-        name = self._cfg.get("obs_active_template", self.tmpl_combo.currentText())
+        name = self._cfg.get("obs_active_template",
+                             self.tmpl_combo.currentText())
         return {
             "name": name,
             "filename": self.filename_edit.text().strip() or _OBS_DEFAULT_FILENAME,
@@ -1799,9 +1886,11 @@ class ObsidianExporterDialog(QDialog):
         if reply != QMessageBox.StandardButton.Yes:
             return
         idx = self.tmpl_combo.currentIndex()
-        self._cfg["obs_templates"] = [t for t in templates if t["name"] != name]
+        self._cfg["obs_templates"] = [
+            t for t in templates if t["name"] != name]
         new_idx = max(0, idx - 1)
-        self._cfg["obs_active_template"] = self._get_templates()[new_idx]["name"]
+        self._cfg["obs_active_template"] = self._get_templates()[
+            new_idx]["name"]
         for combo in (self.tmpl_combo, self.export_tmpl_combo):
             combo.blockSignals(True)
             combo.removeItem(idx)
@@ -1840,7 +1929,8 @@ class ObsidianExporterDialog(QDialog):
         try:
             os.makedirs(output_dir, exist_ok=True)
         except OSError as e:
-            showWarning(f"Não foi possível criar a pasta:\n{output_dir}\n\n{e}")
+            showWarning(
+                f"Não foi possível criar a pasta:\n{output_dir}\n\n{e}")
             return
 
         deck_name = self.deck_combo.currentText()
@@ -1887,7 +1977,8 @@ class ObsidianExporterDialog(QDialog):
                     for item in (v.strip() for v in rendered.split(",") if v.strip()):
                         yaml_lines.append(f"  - {_yaml_quote(item)}")
             elif ptype == "checkbox":
-                yaml_lines.append(f"{key}: {'true' if rendered.lower() in ('true','yes','1') else 'false'}")
+                yaml_lines.append(
+                    f"{key}: {'true' if rendered.lower() in ('true', 'yes', '1') else 'false'}")
             elif ptype in ("number", "date", "datetime"):
                 yaml_lines.append(f"{key}: {rendered.strip().strip('\"\'')}")
             else:
@@ -1904,7 +1995,8 @@ class ObsidianExporterDialog(QDialog):
             with open(filepath, "w", encoding="utf-8") as f:
                 f.write(content)
         except OSError as e:
-            showWarning(f"Não foi possível escrever o ficheiro:\n{filepath}\n\n{e}")
+            showWarning(
+                f"Não foi possível escrever o ficheiro:\n{filepath}\n\n{e}")
             return
 
         self._cfg["obsidian_last_folder"] = folder_rel
