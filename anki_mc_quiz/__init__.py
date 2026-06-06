@@ -10,7 +10,7 @@
 
 from aqt.qt import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QTextEdit, QComboBox, QPushButton, QTabWidget, QWidget,
+    QTextEdit, QPlainTextEdit, QComboBox, QPushButton, QTabWidget, QWidget,
     QListWidget, QAbstractItemView, QListWidgetItem,
     QLineEdit, QFileDialog, QMessageBox,
     QScrollArea, QFrame, QApplication, QStyle, Qt, QEvent
@@ -1238,10 +1238,9 @@ class ImporterDialog(QDialog):
         layout.addWidget(self.mc_input)
 
         layout.addWidget(QLabel(_t("lbl_preview")))
-        self.mc_preview = QListWidget()
-        self.mc_preview.setEditTriggers(
-            QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.mc_preview.setFixedHeight(110)
+        self.mc_preview = QPlainTextEdit()
+        self.mc_preview.setReadOnly(True)
+        self.mc_preview.setFixedHeight(130)
         self.mc_input.textChanged.connect(self._update_mc_preview)
         layout.addWidget(self.mc_preview)
         return tab
@@ -1269,21 +1268,21 @@ class ImporterDialog(QDialog):
         return tab
 
     def _update_mc_preview(self):
-        self.mc_preview.clear()
         questions = parse_questions(self.mc_input.toPlainText())
-        for i, q in enumerate(questions, 1):
-            snippet = q.get("question", "")[:70]
-            self.mc_preview.addItem(
-                f"Q{i}: {snippet}  →  {q.get('answer', '?')}")
-        if not questions and self.mc_input.toPlainText().strip():
-            text = self.mc_input.toPlainText()
-            if "Resposta:" not in text and "Explicação:" not in text:
-                msg = _t("preview_bad_format")
+        if not questions:
+            if self.mc_input.toPlainText().strip():
+                raw = self.mc_input.toPlainText()
+                if "Resposta:" not in raw and "Explicação:" not in raw:
+                    self.mc_preview.setPlainText(_t("preview_bad_format"))
+                else:
+                    self.mc_preview.setPlainText(_t("preview_no_questions"))
             else:
-                msg = _t("preview_no_questions")
-            item = QListWidgetItem(msg)
-            item.setForeground(Qt.GlobalColor.red)
-            self.mc_preview.addItem(item)
+                self.mc_preview.setPlainText("")
+            return
+        blocks = []
+        for i, q in enumerate(questions, 1):
+            blocks.append(f"{i}. {q.get('question', '')}  →  {q.get('answer', '?')}")
+        self.mc_preview.setPlainText("\n\n".join(blocks))
 
     def _update_cloze_preview(self):
         self.cloze_preview.clear()
