@@ -307,36 +307,77 @@ def _set_lang(lang: str) -> None:
 # This is the name that will appear in Anki's note type list.
 NOTE_TYPE_NAME = "Multiple Choice Quiz"
 
-PROMPT_MC = (
-    "Crie um Relatório Personalizado transformando todas as atividades avaliativas "
-    "das fontes em questões de múltipla escolha. Siga exatamente este formato para cada questão:\n"
-    "1. [Enunciado]\n"
-    "A) [Alternativa A]\n"
-    "B) [Alternativa B]\n"
-    "C) [Alternativa C]\n"
-    "D) [Alternativa D]\n"
-    "E) [Alternativa E]\n"
-    "Resposta: A\n"
-    "Explicação: [Uma frase]\n"
-    "Regras: numeração sequencial, letras maiúsculas, uma linha em branco entre questões, "
-    "sem títulos ou gabarito separado."
-)
+_PROMPT_MC = {
+    "pt": (
+        "Crie um Relatório Personalizado transformando todas as atividades avaliativas "
+        "das fontes em questões de múltipla escolha. Siga exatamente este formato para cada questão:\n"
+        "1. [Enunciado]\n"
+        "A) [Alternativa A]\n"
+        "B) [Alternativa B]\n"
+        "C) [Alternativa C]\n"
+        "D) [Alternativa D]\n"
+        "E) [Alternativa E]\n"
+        "Resposta: A\n"
+        "Explicação: [Uma frase]\n"
+        "Regras: numeração sequencial, letras maiúsculas, uma linha em branco entre questões, "
+        "sem títulos ou gabarito separado."
+    ),
+    "en": (
+        "Create a Custom Report transforming all the assessment activities from the sources "
+        "into multiple choice questions. Follow exactly this format for each question:\n"
+        "1. [Question text]\n"
+        "A) [Choice A]\n"
+        "B) [Choice B]\n"
+        "C) [Choice C]\n"
+        "D) [Choice D]\n"
+        "E) [Choice E]\n"
+        "Resposta: A\n"
+        "Explicação: [One sentence]\n"
+        "Rules: sequential numbering, uppercase letters, one blank line between questions, "
+        "no separate titles or answer key."
+    ),
+}
 
-PROMPT_CLOZE = (
-    "Crie um Relatório Personalizado transformando todos os conceitos das fontes "
-    "em flashcards no formato Cloze.\n\n"
-    "Formato obrigatório — cada card deve ocupar exatamente UMA linha isolada:\n"
-    "{{c1::termo ou conceito}} é/são [definição ou contexto em uma frase].\n\n"
-    "Regras:\n"
-    "- Uma linha por card, seguida de uma linha em branco\n"
-    "- Nunca agrupe vários cards no mesmo parágrafo\n"
-    "- Use apenas {{c1::}}, sem {{c2::}} ou outras numerações\n"
-    "- Sem numeração, títulos, subtítulos ou texto introdutório\n"
-    "- Sem duplicatas\n\n"
-    "Exemplo correto:\n"
-    "{{c1::TCP/IP}} é o conjunto de protocolos que governa a transmissão de dados na internet.\n\n"
-    "{{c1::DNS}} é o sistema responsável por traduzir nomes de domínio em endereços IP."
-)
+_PROMPT_CLOZE = {
+    "pt": (
+        "Crie um Relatório Personalizado transformando todos os conceitos das fontes "
+        "em flashcards no formato Cloze.\n\n"
+        "Formato obrigatório — cada card deve ocupar exatamente UMA linha isolada:\n"
+        "{{c1::termo ou conceito}} é/são [definição ou contexto em uma frase].\n\n"
+        "Regras:\n"
+        "- Uma linha por card, seguida de uma linha em branco\n"
+        "- Nunca agrupe vários cards no mesmo parágrafo\n"
+        "- Use apenas {{c1::}}, sem {{c2::}} ou outras numerações\n"
+        "- Sem numeração, títulos, subtítulos ou texto introdutório\n"
+        "- Sem duplicatas\n\n"
+        "Exemplo correto:\n"
+        "{{c1::TCP/IP}} é o conjunto de protocolos que governa a transmissão de dados na internet.\n\n"
+        "{{c1::DNS}} é o sistema responsável por traduzir nomes de domínio em endereços IP."
+    ),
+    "en": (
+        "Create a Custom Report transforming all the concepts from the sources "
+        "into Cloze flashcards.\n\n"
+        "Required format — each card must occupy exactly ONE isolated line:\n"
+        "{{c1::term or concept}} is/are [definition or context in one sentence].\n\n"
+        "Rules:\n"
+        "- One card per line, followed by a blank line\n"
+        "- Never group multiple cards in the same paragraph\n"
+        "- Use only {{c1::}}, no {{c2::}} or other numbering\n"
+        "- No numbering, titles, subtitles, or introductory text\n"
+        "- No duplicates\n\n"
+        "Correct example:\n"
+        "{{c1::TCP/IP}} is the set of protocols that governs data transmission on the internet.\n\n"
+        "{{c1::DNS}} is the system responsible for translating domain names into IP addresses."
+    ),
+}
+
+
+def _prompt_mc() -> str:
+    return _PROMPT_MC.get(_lang, _PROMPT_MC["pt"])
+
+
+def _prompt_cloze() -> str:
+    return _PROMPT_CLOZE.get(_lang, _PROMPT_CLOZE["pt"])
 
 # These are the fields the user will fill in when creating a card.
 # "Explanation" is optional — the card will work without it.
@@ -1173,13 +1214,13 @@ class ImporterDialog(QDialog):
         btn_copy_mc.setToolTip(_t("tooltip_prompt_mc"))
         btn_copy_mc.clicked.connect(
             lambda: self._copy_to_clipboard(
-                PROMPT_MC, btn_copy_mc, "btn_prompt_mc", "btn_prompt_mc_copied")
+                _prompt_mc(), btn_copy_mc, "btn_prompt_mc", "btn_prompt_mc_copied")
         )
         btn_copy_cloze = QPushButton(_t("btn_prompt_cloze"))
         btn_copy_cloze.setToolTip(_t("tooltip_prompt_cloze"))
         btn_copy_cloze.clicked.connect(
             lambda: self._copy_to_clipboard(
-                PROMPT_CLOZE, btn_copy_cloze, "btn_prompt_cloze", "btn_prompt_cloze_copied")
+                _prompt_cloze(), btn_copy_cloze, "btn_prompt_cloze", "btn_prompt_cloze_copied")
         )
         prompt_row.addWidget(btn_copy_mc)
         prompt_row.addWidget(btn_copy_cloze)
