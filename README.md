@@ -11,6 +11,7 @@ Addon para o Anki que automatiza o fluxo de estudo com flashcards de múltipla e
 - **Note type interativo** — múltipla escolha com alternativas embaralhadas e feedback visual imediato
 - **Import from NotebookLM** — cola o texto gerado pelo NotebookLM e importa cards MC e Cloze automaticamente
 - **Export to Obsidian** — exporta os cards de um baralho para uma nota `.md` com frontmatter YAML customizável
+- **Interface PT / EN** — toggle de idioma em todos os dialogs; prompts copiados no idioma ativo
 - Funciona 100% offline
 
 ---
@@ -36,7 +37,7 @@ O note type **"Multiple Choice Quiz"** é criado automaticamente na primeira ini
 
 ### 1. Gerando o conteúdo no NotebookLM
 
-Abra o NotebookLM com as suas fontes de estudo e use um dos prompts abaixo. Os prompts estão disponíveis no próprio addon via **Ferramentas > Import from NotebookLM** — basta clicar no botão para copiar.
+Abra o NotebookLM com as suas fontes de estudo e use um dos prompts abaixo. Os prompts estão disponíveis no próprio addon via **Ferramentas > Import from NotebookLM** — basta clicar no botão para copiar. O texto copiado adapta-se automaticamente ao idioma selecionado (PT ou EN).
 
 **Prompt Múltipla Escolha** — gera questões no formato:
 ```
@@ -61,10 +62,10 @@ Explicação: [Uma frase]
 1. Clique em **Prompt MC 📋** ou **Prompt Cloze 📋** para copiar o prompt
 2. Cole o prompt no NotebookLM e gere o relatório
 3. Copie o texto gerado e cole na aba correspondente do dialog
-4. A preview é atualizada automaticamente conforme você cola
+4. A preview é atualizada automaticamente — mostra o enunciado completo de cada questão com a alternativa correta
 5. Selecione o baralho de destino
 6. Adicione etiquetas na barra de etiquetas (pressione `Enter` para confirmar cada tag; as etiquetas ficam salvas entre sessões)
-7. Clique em **Import →** — uma caixa de confirmação mostra quantos cards serão adicionados e quais tags serão aplicadas
+7. Clique em **Importar →** — uma caixa de confirmação mostra quantos cards serão adicionados e quais tags serão aplicadas
 
 Duplicatas são detectadas automaticamente e ignoradas.
 
@@ -158,6 +159,7 @@ An Anki addon that automates the study workflow with multiple choice and Cloze f
 - **Interactive note type** — multiple choice with shuffled choices and immediate visual feedback
 - **Import from NotebookLM** — paste the generated text and automatically import MC and Cloze cards
 - **Export to Obsidian** — export cards from a deck to a `.md` note with customizable YAML frontmatter
+- **PT / EN interface** — language toggle in all dialogs; copied prompts adapt to the active language
 - Works 100% offline
 
 ---
@@ -183,11 +185,11 @@ The **"Multiple Choice Quiz"** note type is created automatically on first launc
 
 ### 1. Generating content in NotebookLM
 
-Open NotebookLM with your study sources and use one of the prompts below. The prompts are available directly in the addon via **Tools > Import from NotebookLM** — just click the button to copy.
+Open NotebookLM with your study sources and use one of the prompts below. The prompts are available directly in the addon via **Tools > Import from NotebookLM** — just click the button to copy. The copied text automatically adapts to the selected language (PT or EN).
 
 **Multiple Choice Prompt** — generates questions in the format:
 ```
-1. [Question]
+1. [Question text]
 A) [Choice]
 ...
 Resposta: A
@@ -205,10 +207,10 @@ Explicação: [One sentence]
 
 **Tools > Import from NotebookLM**
 
-1. Click **Prompt MC 📋** or **Prompt Cloze 📋** to copy the prompt
+1. Click **MC Prompt 📋** or **Cloze Prompt 📋** to copy the prompt
 2. Paste the prompt into NotebookLM and generate the report
 3. Copy the generated text and paste it into the corresponding tab
-4. The preview updates automatically as you paste
+4. The preview updates automatically — shows the full question text and correct answer for each card
 5. Select the destination deck
 6. Add tags in the tag bar (press `Enter` to confirm each tag; tags are saved between sessions)
 7. Click **Import →** — a confirmation box shows how many cards will be added and which tags will be applied
@@ -236,7 +238,7 @@ During review, choices appear as clickable buttons in random order:
 3. Type the **note title**
 4. Click **Export →**
 
-#### Model tab
+#### Template tab
 Customize the export template:
 
 | Field | Description |
@@ -260,7 +262,7 @@ Customize the export template:
 | `{{mc_cards_callouts}}` | MC as `> [!question]` callouts |
 | `{{cloze_cards_callouts}}` | Cloze as `> [!info]` callouts |
 
-**Import Obsidian properties:** the "Importar do Obsidian" button reads `types.json` from your vault and automatically populates the property type dropdown.
+**Import Obsidian properties:** the "Import from Obsidian" button reads `types.json` from your vault and automatically populates the property type dropdown.
 
 **Multiple templates:** create one template per subject. The selected deck is remembered per template.
 
