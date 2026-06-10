@@ -18,8 +18,10 @@ Addon para o Anki que automatiza o fluxo de estudo com flashcards de múltipla e
 
 ## Instalação
 
-### Via AnkiWeb *(em breve)*
-Pesquise por **"MC Quiz"** na loja de addons do Anki.
+### Via AnkiWeb
+No Anki: **Ferramentas > Add-ons > Obter Add-ons** e insira o código **`1875934296`**.
+
+Ou acesse diretamente: https://ankiweb.net/shared/info/1875934296
 
 ### Manual
 1. Baixe ou clone este repositório
@@ -166,8 +168,10 @@ An Anki addon that automates the study workflow with multiple choice and Cloze f
 
 ## Installation
 
-### Via AnkiWeb *(coming soon)*
-Search for **"MC Quiz"** in the Anki addon store.
+### Via AnkiWeb
+In Anki: **Tools > Add-ons > Get Add-ons** and enter code **`1875934296`**.
+
+Or visit directly: https://ankiweb.net/shared/info/1875934296
 
 ### Manual
 1. Download or clone this repository
@@ -281,4 +285,4 @@ Customize the export template:
 
 ## License
 
-MIT © Eduardo Yuzo Kubota
+MIT © Eduardo Kubota
