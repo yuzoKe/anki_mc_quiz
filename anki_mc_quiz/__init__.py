@@ -142,6 +142,10 @@ _STRINGS: dict = {
         "confirm_overwrite_body": "'{filename}' já existe na pasta de destino.\nSobrescrever?",
         "warn_write_failed": "Não foi possível escrever o ficheiro:\n{path}\n\n{e}",
         "success_export": "Exportado para Obsidian:\n{path}",
+        # Obsidian export formatting
+        "fmt_mc_heading": "## Questões (Múltipla Escolha)",
+        "fmt_cloze_heading": "## Cloze",
+        "fmt_answer": "Resposta",
     },
     "en": {
         "tag_placeholder": "add tag…",
@@ -164,8 +168,8 @@ _STRINGS: dict = {
             "Each question must follow the format:\n"
             "  1. Question text\n"
             "  A) Choice A   B) Choice B\n"
-            "  Resposta: A\n"
-            "  Explicação: Explanation text"
+            "  Answer: A\n"
+            "  Explanation: Explanation text"
         ),
         "mc_placeholder": "Paste your NotebookLM quiz text here...",
         "cloze_instructions": (
@@ -184,8 +188,8 @@ _STRINGS: dict = {
             "Make sure the text follows the expected format:\n"
             "1. Question text\n"
             "A) Choice A\n"
-            "Resposta: A\n"
-            "Explicação: Explanation"
+            "Answer: A\n"
+            "Explanation: Explanation"
         ),
         "warn_no_cloze": "No Cloze cards found.\n\nEach line must contain {{c1::term}}.",
         "warn_no_note_type": "Multiple Choice Quiz note type not found. Please restart Anki.",
@@ -260,6 +264,10 @@ _STRINGS: dict = {
         "confirm_overwrite_body": "'{filename}' already exists in the destination folder.\nOverwrite?",
         "warn_write_failed": "Could not write file:\n{path}\n\n{e}",
         "success_export": "Exported to Obsidian:\n{path}",
+        # Obsidian export formatting
+        "fmt_mc_heading": "## Multiple Choice Questions",
+        "fmt_cloze_heading": "## Cloze",
+        "fmt_answer": "Answer",
     },
 }
 
@@ -331,8 +339,8 @@ _PROMPT_MC = {
         "C) [Choice C]\n"
         "D) [Choice D]\n"
         "E) [Choice E]\n"
-        "Resposta: A\n"
-        "Explicação: [One sentence]\n"
+        "Answer: A\n"
+        "Explanation: [One sentence]\n"
         "Rules: sequential numbering, uppercase letters, one blank line between questions, "
         "no separate titles or answer key."
     ),
@@ -832,7 +840,7 @@ def parse_questions(text: str) -> list:
         text = text[numbered.start():]
     else:
         lines = text.split('\n')
-        while lines and 'A)' not in lines[0] and 'Resposta:' not in lines[0]:
+        while lines and 'A)' not in lines[0] and 'Resposta:' not in lines[0] and 'Answer:' not in lines[0]:
             lines.pop(0)
         text = '\n'.join(lines)
 
@@ -846,11 +854,11 @@ def parse_questions(text: str) -> list:
     #   \n              — unnumbered questions, one per line
     #   \Z              — end of string
     tail_re = re.compile(
-        r'Resposta:\s*([A-Ea-e])\s*\n?\s*Explica[çc][aã]o:\s*(.+?)(?=\n\s*\n|\n\d+[\.\)]|\s+\d+[\.\)]\s|\n|\Z)',
+        r'(?:Resposta|Answer):\s*([A-Ea-e])\s*\n?\s*(?:Explica[çc][aã]o|Explanation):\s*(.+?)(?=\n\s*\n|\n\d+[\.\)]|\s+\d+[\.\)]\s|\n|\Z)',
         re.IGNORECASE | re.DOTALL
     )
     choice_re = re.compile(
-        r'\b([A-E])\)\s*(.+?)(?=\s+[A-E]\)|\s*Resposta:|$)', re.DOTALL)
+        r'\b([A-E])\)\s*(.+?)(?=\s+[A-E]\)|\s*(?:Resposta|Answer):|$)', re.DOTALL)
 
     tail_matches = list(tail_re.finditer(text))
     if not tail_matches:
@@ -928,7 +936,7 @@ def _anki_tags_to_obsidian(tags_list: list) -> list:
 
 
 def _format_mc_cards(mc_notes: list) -> str:
-    body = "## Questões (Múltipla Escolha)\n\n"
+    body = f"{_t('fmt_mc_heading')}\n\n"
     for i, q in enumerate(mc_notes, 1):
         body += f"{i}. {q.get('question', '')}\n"
         for letter in "ABCDE":
@@ -936,20 +944,20 @@ def _format_mc_cards(mc_notes: list) -> str:
                 body += f"   {letter}) {q[letter]}\n"
         ans = q.get("answer", "")
         expl = q.get("explanation", "")
-        body += f"   **Resposta: {ans}**"
+        body += f"   **{_t('fmt_answer')}: {ans}**"
         body += f" — {expl}\n\n" if expl else "\n\n"
     return body
 
 
 def _format_cloze_cards(cloze_notes: list) -> str:
-    body = "## Cloze\n\n"
+    body = f"{_t('fmt_cloze_heading')}\n\n"
     for c in cloze_notes:
         body += f"- {c}\n"
     return body
 
 
 def _format_mc_callouts(mc_notes: list) -> str:
-    body = "## Questões (Múltipla Escolha)\n\n"
+    body = f"{_t('fmt_mc_heading')}\n\n"
     for i, q in enumerate(mc_notes, 1):
         body += f"> [!question] {i}. {q.get('question', '')}\n"
         for letter in "ABCDE":
@@ -957,13 +965,13 @@ def _format_mc_callouts(mc_notes: list) -> str:
                 body += f"> {letter}) {q[letter]}\n"
         ans = q.get("answer", "")
         expl = q.get("explanation", "")
-        body += f">\n> **Resposta: {ans}**"
+        body += f">\n> **{_t('fmt_answer')}: {ans}**"
         body += f" — {expl}\n\n" if expl else "\n\n"
     return body
 
 
 def _format_cloze_callouts(cloze_notes: list) -> str:
-    body = "## Cloze\n\n"
+    body = f"{_t('fmt_cloze_heading')}\n\n"
     for c in cloze_notes:
         body += f"> [!info]\n> {c}\n\n"
     return body
@@ -1312,7 +1320,7 @@ class ImporterDialog(QDialog):
         if not questions:
             if self.mc_input.toPlainText().strip():
                 raw = self.mc_input.toPlainText()
-                if "Resposta:" not in raw and "Explicação:" not in raw:
+                if "Resposta:" not in raw and "Explicação:" not in raw and "Answer:" not in raw and "Explanation:" not in raw:
                     self.mc_preview.setPlainText(_t("preview_bad_format"))
                 else:
                     self.mc_preview.setPlainText(_t("preview_no_questions"))
