@@ -81,6 +81,7 @@ _STRINGS: dict = {
         "confirm_proceed": "Deseja importar?",
         "success_mc": "{created} card(s) adicionado(s) a '{deck}'.",
         "success_skipped": " {skipped} duplicata(s) ignorada(s).",
+        "success_errors": " {errors} card(s) ignorado(s) por erro (conteúdo inválido).",
         "success_cloze": "{created} card(s) Cloze adicionado(s) a '{deck}'.",
         # ObsidianExporterDialog
         "exporter_title": "Export to Obsidian",
@@ -203,6 +204,7 @@ _STRINGS: dict = {
         "confirm_proceed": "Proceed with import?",
         "success_mc": "{created} card(s) added to '{deck}'.",
         "success_skipped": " {skipped} duplicate(s) skipped.",
+        "success_errors": " {errors} card(s) skipped due to errors (invalid content).",
         "success_cloze": "{created} Cloze card(s) added to '{deck}'.",
         # ObsidianExporterDialog
         "exporter_title": "Export to Obsidian",
@@ -328,7 +330,16 @@ _PROMPT_MC = {
         "Resposta: A\n"
         "Explicação: [Uma frase]\n"
         "Regras: numeração sequencial, letras maiúsculas, uma linha em branco entre questões, "
-        "sem títulos ou gabarito separado."
+        "sem títulos ou gabarito separado.\n\n"
+        "CÓDIGO (OBRIGATÓRIO): sempre que o enunciado, uma alternativa ou a explicação "
+        "contiver código, envolva-o num bloco delimitado por três crases (```), com o nome "
+        "da linguagem logo após as crases de abertura — ```python, ```java, ```cpp, etc. "
+        "Nunca escreva código solto, fora do bloco. Preserve a indentação e as quebras de "
+        "linha originais. Exemplo:\n"
+        "```python\n"
+        "for i in range(3):\n"
+        "    print(i)\n"
+        "```"
     ),
     "en": (
         "Create a Custom Report transforming all the assessment activities from the sources "
@@ -342,7 +353,16 @@ _PROMPT_MC = {
         "Answer: A\n"
         "Explanation: [One sentence]\n"
         "Rules: sequential numbering, uppercase letters, one blank line between questions, "
-        "no separate titles or answer key."
+        "no separate titles or answer key.\n\n"
+        "CODE (REQUIRED): whenever the question, a choice, or the explanation contains code, "
+        "wrap it in a fenced block delimited by three backticks (```), with the language "
+        "name right after the opening backticks — ```python, ```java, ```cpp, etc. Never "
+        "write code loose, outside the block. Preserve the original indentation and line "
+        "breaks. Example:\n"
+        "```python\n"
+        "for i in range(3):\n"
+        "    print(i)\n"
+        "```"
     ),
 }
 
@@ -360,7 +380,16 @@ _PROMPT_CLOZE = {
         "- Sem duplicatas\n\n"
         "Exemplo correto:\n"
         "{{c1::TCP/IP}} é o conjunto de protocolos que governa a transmissão de dados na internet.\n\n"
-        "{{c1::DNS}} é o sistema responsável por traduzir nomes de domínio em endereços IP."
+        "{{c1::DNS}} é o sistema responsável por traduzir nomes de domínio em endereços IP.\n\n"
+        "CÓDIGO: se um card precisar de um trecho de código, coloque-o num bloco delimitado "
+        "por três crases (```), com o nome da linguagem logo após as crases de abertura "
+        "(```python, ```java, ```cpp, ...), LOGO ABAIXO da frase do card e SEM linha em "
+        "branco entre a frase e o bloco — a linha em branco só separa cards diferentes. "
+        "Nunca escreva código solto e preserve a indentação. Exemplo:\n"
+        "{{c1::print}} exibe um valor na saída padrão em Python.\n"
+        "```python\n"
+        "print(\"olá\")\n"
+        "```"
     ),
     "en": (
         "Create a Custom Report transforming all the concepts from the sources "
@@ -375,7 +404,16 @@ _PROMPT_CLOZE = {
         "- No duplicates\n\n"
         "Correct example:\n"
         "{{c1::TCP/IP}} is the set of protocols that governs data transmission on the internet.\n\n"
-        "{{c1::DNS}} is the system responsible for translating domain names into IP addresses."
+        "{{c1::DNS}} is the system responsible for translating domain names into IP addresses.\n\n"
+        "CODE: if a card needs a code snippet, put it in a fenced block delimited by three "
+        "backticks (```), with the language name right after the opening backticks "
+        "(```python, ```java, ```cpp, ...), RIGHT BELOW the card's sentence and WITH NO "
+        "blank line between the sentence and the block — the blank line only separates "
+        "different cards. Never write code loose, and preserve the indentation. Example:\n"
+        "{{c1::print}} outputs a value to standard output in Python.\n"
+        "```python\n"
+        "print(\"hello\")\n"
+        "```"
     ),
 }
 
@@ -412,6 +450,26 @@ FIELDS = [
 #   5. Each button keeps data-letter pointing to the ORIGINAL letter (A, B, etc.)
 #      so the Answer field comparison always works correctly
 FRONT_TEMPLATE = """
+<script src="_amcq_highlight.min.js"></script>
+<script src="_amcq_highlight_ln.min.js"></script>
+<script>
+  // Colorize ```code``` blocks. highlight.js loads asynchronously from the
+  // media folder, so poll until it's ready, then highlight every <pre><code>
+  // (including code inside choices injected by the quiz script) exactly once.
+  function __amcqHl(tries) {
+    tries = tries || 0;
+    if (typeof hljs === "undefined") {
+      if (tries < 50) setTimeout(function () { __amcqHl(tries + 1); }, 40);
+      return;
+    }
+    document.querySelectorAll("pre code").forEach(function (el) {
+      if (el.dataset.amcqDone) return;
+      el.dataset.amcqDone = "1";
+      try { hljs.highlightElement(el); } catch (e) {}
+      try { if (typeof hljs.lineNumbersBlock === "function") hljs.lineNumbersBlock(el); } catch (e) {}
+    });
+  }
+</script>
 <div class="quiz-card">
 
   <!-- Question -->
@@ -517,6 +575,9 @@ FRONT_TEMPLATE = """
       }
     }
 
+    // Highlight any ```code``` blocks in the question and the injected choices.
+    __amcqHl();
+
   })(); // End of IIFE — executes immediately, scope is discarded after
 </script>
 """
@@ -526,6 +587,25 @@ FRONT_TEMPLATE = """
 # and shows the explanation. Choices are rendered in original order (A, B, C, D)
 # with the correct one highlighted in green.
 BACK_TEMPLATE = """
+<script src="_amcq_highlight.min.js"></script>
+<script src="_amcq_highlight_ln.min.js"></script>
+<script>
+  // Same highlighter as the front: poll until highlight.js is loaded, then
+  // colorize every <pre><code> once (question, choices, and explanation).
+  function __amcqHl(tries) {
+    tries = tries || 0;
+    if (typeof hljs === "undefined") {
+      if (tries < 50) setTimeout(function () { __amcqHl(tries + 1); }, 40);
+      return;
+    }
+    document.querySelectorAll("pre code").forEach(function (el) {
+      if (el.dataset.amcqDone) return;
+      el.dataset.amcqDone = "1";
+      try { hljs.highlightElement(el); } catch (e) {}
+      try { if (typeof hljs.lineNumbersBlock === "function") hljs.lineNumbersBlock(el); } catch (e) {}
+    });
+  }
+</script>
 <div class="quiz-card">
 
   <!-- Question repeated for context -->
@@ -593,6 +673,9 @@ BACK_TEMPLATE = """
     const correctVisual = correctIndex >= 0 ? visualLabels[correctIndex] : correctAnswer;
     const banner = document.getElementById("correct-banner");
     banner.textContent = "✓ Correct answer: " + correctVisual;
+
+    // Highlight any ```code``` blocks (question, choices, explanation).
+    __amcqHl();
   })();
 </script>
 """
@@ -743,6 +826,46 @@ CARD_CSS = """
   font-weight: 500;
   color: #2ecc71;
 }
+
+/* ── Code blocks (```fenced```) ───────────────────────────── */
+/* highlight.js atom-one-dark theme (inlined so it works offline). */
+pre code.hljs{display:block;overflow-x:auto;padding:1em}
+code.hljs{padding:3px 5px}
+.hljs{color:#abb2bf;background:#282c34}
+.hljs-comment,.hljs-quote{color:#5c6370;font-style:italic}
+.hljs-doctag,.hljs-formula,.hljs-keyword{color:#c678dd}
+.hljs-deletion,.hljs-name,.hljs-section,.hljs-selector-tag,.hljs-subst{color:#e06c75}
+.hljs-literal{color:#56b6c2}
+.hljs-addition,.hljs-attribute,.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#98c379}
+.hljs-attr,.hljs-number,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-pseudo,.hljs-template-variable,.hljs-type,.hljs-variable{color:#d19a66}
+.hljs-bullet,.hljs-link,.hljs-meta,.hljs-selector-id,.hljs-symbol,.hljs-title{color:#61aeee}
+.hljs-built_in,.hljs-class .hljs-title,.hljs-title.class_{color:#e6c07b}
+.hljs-emphasis{font-style:italic}
+.hljs-strong{font-weight:700}
+.hljs-link{text-decoration:underline}
+
+/* Our code-block container already carries base styling as an inline style
+   (so it degrades gracefully on note types without highlight.js). These rules
+   refine it once highlight.js has run. */
+.amcq-code{max-width:100%}
+.amcq-code code.hljs{padding:0;background:transparent;display:block}
+
+/* Line numbers (highlightjs-line-numbers.js) */
+.amcq-code .hljs-ln{border-collapse:collapse;width:100%}
+.amcq-code .hljs-ln td{padding:0;border:0}
+.amcq-code .hljs-ln-numbers{
+  text-align:right;color:#5c6370;border-right:1px solid #3a3f4b;
+  vertical-align:top;padding-right:10px !important;white-space:nowrap;
+  user-select:none;-webkit-user-select:none;
+}
+.amcq-code .hljs-ln-code{padding-left:12px !important;vertical-align:top}
+.amcq-code .hljs-ln-n:before{content:attr(data-line-number)}
+
+/* Inline `code` */
+.amcq-inline{
+  background:#282c34;color:#e06c75;padding:2px 6px;border-radius:4px;
+  font-family:'JetBrains Mono',Consolas,'Courier New',monospace;font-size:0.9em;
+}
 """
 
 
@@ -755,7 +878,7 @@ CARD_CSS = """
 # stored in the note type, and re-syncs the templates if they differ.
 # This ensures users who already have the addon always get the latest templates
 # after updating, without losing any of their cards.
-TEMPLATE_VERSION = "1.1.0"
+TEMPLATE_VERSION = "1.2.0"
 
 
 def create_note_type():
@@ -828,6 +951,8 @@ def parse_questions(text: str) -> list:
     """
 
     text = text.replace('\r\n', '\n').replace('\r', '\n').strip()
+    # Shield fenced code blocks from the line-based parsing below.
+    text, _code_blocks = _protect_code_blocks(text)
     # Strip preamble before the first question.
     # Numbered format (multiline): "^1." at start of line.
     # Numbered format (single-line block): "\b1." at word boundary.
@@ -880,7 +1005,8 @@ def parse_questions(text: str) -> list:
         choices_block = text[choices_start:tail.start()]
         choices = {}
         for cm in choice_re.finditer(choices_block):
-            choices[cm.group(1).upper()] = cm.group(2).strip().rstrip('.')
+            choices[cm.group(1).upper()] = _restore_code_blocks(
+                cm.group(2).strip().rstrip('.'), _code_blocks)
 
         # ── Question text ──────────────────────────────────────────────────
         if i == 0:
@@ -890,6 +1016,8 @@ def parse_questions(text: str) -> list:
 
         # Strip leading question numbers like "1. " or "1) "
         raw_question = re.sub(r'^\d+[\.\)]\s*', '', raw_question)
+        raw_question = _restore_code_blocks(raw_question, _code_blocks)
+        explanation = _restore_code_blocks(explanation, _code_blocks)
 
         if raw_question and answer:
             q = {"question": raw_question, "answer": answer,
@@ -907,18 +1035,149 @@ def parse_cloze(text: str) -> list:
     - One card per line (standard NotebookLM output)
     - Multiple sentences concatenated in a paragraph (split on '. {{c' boundaries)
     """
+    # Shield fenced code blocks so a multi-line block stays on one logical card.
+    text, blocks = _protect_code_blocks(text)
+
     results = []
-    for line in text.splitlines():
-        line = line.strip()
-        if not line or "{{c" not in line:
+    # NotebookLM separates cards with a blank line, so process blank-line
+    # separated chunks. A chunk that carries a code block is kept whole (its
+    # ```...``` lives on its own line and has no {{c marker); chunks without a
+    # code block keep the original line-based behavior (one card per line, and
+    # paragraphs holding several {{c are split into separate cards).
+    for chunk in re.split(r'\n[ \t]*\n', text):
+        if "{{c" not in chunk:
             continue
-        if line.count("{{c") > 1:
-            # Split paragraph into individual sentences at '. {{c' boundaries
-            parts = re.split(r'(?<=\.)\s+(?=\{\{c)', line)
-            results.extend(p.strip() for p in parts if "{{c" in p)
-        else:
-            results.append(line)
-    return results
+        if "\x00CB" in chunk:
+            results.append(chunk.strip())
+            continue
+        for line in chunk.splitlines():
+            line = line.strip()
+            if not line or "{{c" not in line:
+                continue
+            if line.count("{{c") > 1:
+                parts = re.split(r'(?<=\.)\s+(?=\{\{c)', line)
+                results.extend(p.strip() for p in parts if "{{c" in p)
+            else:
+                results.append(line)
+    return [_restore_code_blocks(r, blocks) for r in results]
+
+
+def _escape_search(text: str) -> str:
+    """Escape characters that are special to Anki's search syntax.
+
+    Without this, a question/card containing a double quote (common in
+    NotebookLM output, e.g. Qual o significado de "API"?) breaks the quoted
+    search term and raises anki.errors.SearchError. Backslash must be escaped
+    first so the escapes we add are not doubled.
+    """
+    return (
+        text.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("*", "\\*")
+        .replace("_", "\\_")
+    )
+
+
+def _html_escape(text: str) -> str:
+    """Escape HTML-special characters so code snippets survive intact.
+
+    Java/C++ answers contain characters like <, > and & (e.g. vector<int>,
+    a < b, System&). Anki renders card fields as HTML, so unescaped angle
+    brackets are swallowed as unknown tags. Ampersand must be escaped first.
+    """
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+# ---------------------------------------------------------------------------
+# Code blocks (Markdown fenced ``` / inline `code`) → highlighted HTML
+# ---------------------------------------------------------------------------
+# The parsers below work line-by-line, so a multi-line fenced code block would
+# be torn apart (its inner newlines look like question/card boundaries). To
+# avoid that, _protect_code_blocks() replaces every ```...``` block with a
+# single-line, regex-inert placeholder (NUL-delimited, no A)/Resposta:/digit.
+# patterns) before parsing, and _restore_code_blocks() puts them back on the
+# extracted field text afterwards. _render_content() then turns the restored
+# fences into <pre><code> markup that highlight.js colors on the card.
+
+_FENCE_RE = re.compile(r"```([A-Za-z0-9+#._-]*)[ \t]*\n?(.*?)```", re.DOTALL)
+_INLINE_CODE_RE = re.compile(r"`([^`\n]+)`")
+_PLACEHOLDER_RE = re.compile("\x00CB(\\d+)\x00")
+
+# Inline base styling so a code block still looks like a dark code box even on
+# note types whose template does NOT load highlight.js (e.g. the native Cloze
+# type). On the Multiple Choice cards, highlight.js + CARD_CSS layer colors and
+# line numbers on top of this.
+_CODE_PRE_STYLE = (
+    "background:#282c34;color:#abb2bf;padding:12px 14px;border-radius:8px;"
+    "overflow-x:auto;font-family:'JetBrains Mono',Consolas,'Courier New',monospace;"
+    "font-size:13.5px;line-height:1.5;white-space:pre;tab-size:4;margin:12px 0;"
+    "text-align:left"
+)
+
+
+def _protect_code_blocks(text: str):
+    """Replace ```...``` blocks with inert single-line placeholders.
+
+    Returns (protected_text, blocks) where blocks[i] is the original fenced
+    block (including its backticks). An unclosed fence is left untouched.
+    """
+    blocks = []
+
+    def _stash(m):
+        blocks.append(m.group(0))
+        return "\x00CB%d\x00" % (len(blocks) - 1)
+
+    return _FENCE_RE.sub(_stash, text), blocks
+
+
+def _restore_code_blocks(text: str, blocks: list) -> str:
+    """Reverse _protect_code_blocks() on a (possibly sliced) piece of text."""
+    if not blocks:
+        return text
+
+    def _unstash(m):
+        idx = int(m.group(1))
+        return blocks[idx] if 0 <= idx < len(blocks) else m.group(0)
+
+    return _PLACEHOLDER_RE.sub(_unstash, text)
+
+
+def _render_inline(text: str) -> str:
+    """HTML-escape text, turning `inline code` spans into <code> elements."""
+    parts = []
+    last = 0
+    for m in _INLINE_CODE_RE.finditer(text):
+        parts.append(_html_escape(text[last:m.start()]))
+        parts.append(
+            '<code class="amcq-inline">%s</code>' % _html_escape(m.group(1))
+        )
+        last = m.end()
+    parts.append(_html_escape(text[last:]))
+    return "".join(parts)
+
+
+def _render_content(text: str) -> str:
+    """Convert a field's text to Anki-ready HTML.
+
+    Fenced ```lang code``` blocks become <pre><code class="language-lang"> so
+    highlight.js can color them; inline `code` becomes <code>; everything else
+    is HTML-escaped exactly as _html_escape would do. Safe to call on plain
+    text with no code (it just escapes).
+    """
+    out = []
+    last = 0
+    for m in _FENCE_RE.finditer(text):
+        out.append(_render_inline(text[last:m.start()]))
+        lang = m.group(1).strip().lower()
+        code = m.group(2).strip("\n")
+        cls = ' class="language-%s"' % lang if lang else ""
+        out.append(
+            '<pre class="amcq-code" style="%s"><code%s>%s</code></pre>'
+            % (_CODE_PRE_STYLE, cls, _html_escape(code))
+        )
+        last = m.end()
+    out.append(_render_inline(text[last:]))
+    return "".join(out)
 
 
 # ---------------------------------------------------------------------------
@@ -1346,12 +1605,20 @@ class ImporterDialog(QDialog):
         return self.tags_input.get_tags()
 
     def _is_duplicate_mc(self, question: str) -> bool:
-        query = f'"note:{NOTE_TYPE_NAME}" "Question:{question}"'
-        return bool(mw.col.find_notes(query))
+        query = f'"note:{NOTE_TYPE_NAME}" "Question:{_escape_search(question)}"'
+        try:
+            return bool(mw.col.find_notes(query))
+        except Exception:
+            # If the search still trips on some character, don't lose the card:
+            # treat as not-duplicate and let it be added.
+            return False
 
     def _is_duplicate_cloze(self, card_text: str) -> bool:
-        query = f'"note:Cloze" "Text:{card_text}"'
-        return bool(mw.col.find_notes(query))
+        query = f'"note:Cloze" "Text:{_escape_search(card_text)}"'
+        try:
+            return bool(mw.col.find_notes(query))
+        except Exception:
+            return False
 
     def _copy_to_clipboard(self, text, btn, original_key, copied_key):
         QApplication.clipboard().setText(text)
@@ -1407,28 +1674,38 @@ class ImporterDialog(QDialog):
 
         created = 0
         skipped = 0
+        errors = 0
         for q in questions:
-            if self._is_duplicate_mc(q.get("question", "")):
-                skipped += 1
+            # Any single malformed card (e.g. odd code snippet) is skipped and
+            # counted instead of aborting the whole import.
+            try:
+                question = _render_content(q.get("question", ""))
+                if self._is_duplicate_mc(question):
+                    skipped += 1
+                    continue
+                note = mw.col.new_note(model)
+                note["Question"] = question
+                note["A"] = _render_content(q.get("A", ""))
+                note["B"] = _render_content(q.get("B", ""))
+                note["C"] = _render_content(q.get("C", ""))
+                note["D"] = _render_content(q.get("D", ""))
+                note["E"] = _render_content(q.get("E", ""))
+                note["Answer"] = q.get("answer", "")
+                note["Explanation"] = _render_content(q.get("explanation", ""))
+                note.note_type()["did"] = deck_id
+                note.tags = self._get_tags()
+                mw.col.add_note(note, deck_id)
+                created += 1
+            except Exception:
+                errors += 1
                 continue
-            note = mw.col.new_note(model)
-            note["Question"] = q.get("question", "")
-            note["A"] = q.get("A", "")
-            note["B"] = q.get("B", "")
-            note["C"] = q.get("C", "")
-            note["D"] = q.get("D", "")
-            note["E"] = q.get("E", "")
-            note["Answer"] = q.get("answer", "")
-            note["Explanation"] = q.get("explanation", "")
-            note.note_type()["did"] = deck_id
-            note.tags = self._get_tags()
-            mw.col.add_note(note, deck_id)
-            created += 1
 
         mw.reset()
         msg = _t("success_mc", created=created, deck=deck_name)
         if skipped:
             msg += _t("success_skipped", skipped=skipped)
+        if errors:
+            msg += _t("success_errors", errors=errors)
         showInfo(msg)
         self.accept()
 
@@ -1471,24 +1748,35 @@ class ImporterDialog(QDialog):
 
         created = 0
         skipped = 0
+        errors = 0
         for card_text in cards:
-            if self._is_duplicate_cloze(card_text):
-                skipped += 1
+            # Any single malformed card (e.g. odd code snippet) is skipped and
+            # counted instead of aborting the whole import.
+            try:
+                # Escape HTML so tags like <tr> are displayed literally, not
+                # stripped, and turn ```fenced``` code into <pre><code> blocks.
+                # Cloze markers {{cN::...}} are left intact (not HTML-special).
+                # Dedup on the rendered form to match what is stored.
+                safe_text = _render_content(card_text)
+                if self._is_duplicate_cloze(safe_text):
+                    skipped += 1
+                    continue
+                note = mw.col.new_note(cloze_model)
+                note.fields[0] = safe_text
+                note.note_type()["did"] = deck_id
+                note.tags = self._get_tags()
+                mw.col.add_note(note, deck_id)
+                created += 1
+            except Exception:
+                errors += 1
                 continue
-            note = mw.col.new_note(cloze_model)
-            # Escape HTML so tags like <tr> are displayed literally, not stripped
-            safe_text = card_text.replace("&", "&amp;").replace(
-                "<", "&lt;").replace(">", "&gt;")
-            note.fields[0] = safe_text
-            note.note_type()["did"] = deck_id
-            note.tags = self._get_tags()
-            mw.col.add_note(note, deck_id)
-            created += 1
 
         mw.reset()
         msg = _t("success_cloze", created=created, deck=deck_name)
         if skipped:
             msg += _t("success_skipped", skipped=skipped)
+        if errors:
+            msg += _t("success_errors", errors=errors)
         showInfo(msg)
         self.accept()
 
@@ -2330,12 +2618,42 @@ class ObsidianExporterDialog(QDialog):
 # Addon startup hook
 # ---------------------------------------------------------------------------
 
+def _ensure_media_assets():
+    """Copy the bundled highlight.js assets into the collection's media folder.
+
+    Card templates reference them as `_amcq_*.js`. Media file names must start
+    with `_` so Anki's "check media" never deletes them as unused. Copies only
+    when missing or a different size, so it's cheap to run on every startup.
+    Never raises — highlighting is a nice-to-have, not worth blocking startup.
+    """
+    import os
+    import shutil
+    try:
+        media_dir = mw.col.media.dir()
+        vendor = os.path.join(os.path.dirname(__file__), "vendor")
+        assets = [
+            ("highlight.min.js", "_amcq_highlight.min.js"),
+            ("highlightjs-line-numbers.min.js", "_amcq_highlight_ln.min.js"),
+        ]
+        for src_name, dst_name in assets:
+            src = os.path.join(vendor, src_name)
+            dst = os.path.join(media_dir, dst_name)
+            if not os.path.exists(src):
+                continue
+            if (not os.path.exists(dst)
+                    or os.path.getsize(dst) != os.path.getsize(src)):
+                shutil.copyfile(src, dst)
+    except Exception:
+        pass
+
+
 def on_main_window_ready():
     """
     Called by Anki once the main window and collection are fully loaded.
     Safe to access mw.col here.
     """
     create_note_type()
+    _ensure_media_assets()
     _register_menu()
 
 
