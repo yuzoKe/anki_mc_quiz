@@ -8,6 +8,9 @@ __pycache__/
 # Anki build artifact
 *.ankiaddon
 
+# Claude dev instructions — kept local, not published to the repo
+CLAUDE.md
+
 # VSCode
 .vscode/
 
