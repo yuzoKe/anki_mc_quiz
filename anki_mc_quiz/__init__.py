@@ -15,299 +15,18 @@ from aqt.qt import (
     QLineEdit, QFileDialog, QMessageBox,
     QScrollArea, QFrame, QApplication, QStyle, Qt, QEvent
 )
-import re
 from aqt import mw, gui_hooks
 from aqt.tagedit import TagEdit
 
-
-# ---------------------------------------------------------------------------
-# i18n — language strings and helpers
-# ---------------------------------------------------------------------------
-
-_STRINGS: dict = {
-    "pt": {
-        "tag_placeholder": "adicionar etiqueta…",
-        # ImporterDialog
-        "importer_title": "Import from NotebookLM",
-        "btn_prompt_mc": "Prompt Múltipla Escolha  📋",
-        "btn_prompt_mc_copied": "Copiado! ✓",
-        "btn_prompt_cloze": "Prompt Cloze  📋",
-        "btn_prompt_cloze_copied": "Copiado! ✓",
-        "tooltip_prompt_mc": "Copia o prompt de múltipla escolha para o clipboard",
-        "tooltip_prompt_cloze": "Copia o prompt Cloze para o clipboard",
-        "tab_mc": "Múltipla Escolha",
-        "tab_cloze": "Cloze",
-        "lbl_deck": "Baralho de destino:",
-        "lbl_tags": "Etiquetas:",
-        "btn_cancel": "Cancelar",
-        "btn_import": "Importar →",
-        "mc_instructions": (
-            "Cole o texto do quiz gerado pelo NotebookLM abaixo.\n"
-            "Cada questão deve seguir o formato:\n"
-            "  1. Enunciado\n"
-            "  A) Alternativa A   B) Alternativa B\n"
-            "  Resposta: A\n"
-            "  Explicação: Texto"
-        ),
-        "mc_placeholder": "Cole o texto do NotebookLM aqui...",
-        "cloze_instructions": (
-            "Cole o texto Cloze gerado pelo NotebookLM abaixo.\n"
-            "Um card por linha. Formato:\n"
-            "  {{c1::termo}} é/são [contexto]."
-        ),
-        "cloze_placeholder": "Cole o texto Cloze do NotebookLM aqui...",
-        "lbl_preview": "Preview:",
-        "preview_bad_format": "Formato não reconhecido — use o Prompt Múltipla Escolha 📋 no NotebookLM",
-        "preview_no_questions": "Nenhuma questão detectada — verifique o formato",
-        "preview_no_cloze": "Nenhum card Cloze detectado — verifique o formato",
-        "warn_no_text": "Cole algum texto antes de importar.",
-        "warn_no_questions": (
-            "Nenhuma questão encontrada.\n\n"
-            "Verifique se o texto segue o formato esperado:\n"
-            "1. Enunciado\n"
-            "A) Alternativa A\n"
-            "Resposta: A\n"
-            "Explicação: Texto"
-        ),
-        "warn_no_cloze": "Nenhum card Cloze encontrado.\n\nCada linha deve conter {{c1::termo}}.",
-        "warn_no_note_type": "Tipo de nota não encontrado. Reinicie o Anki.",
-        "warn_no_cloze_type": "Tipo Cloze nativo não encontrado na coleção.",
-        "confirm_import_title": "Confirmar importação",
-        "confirm_mc_body": "<b>{n}</b> card(s) serão adicionado(s)",
-        "confirm_cloze_body": "<b>{n}</b> card(s) Cloze encontrado(s)",
-        "confirm_deck_lbl": "Baralho:",
-        "confirm_tags_lbl": "Etiquetas:",
-        "confirm_none": "(nenhuma)",
-        "confirm_proceed": "Deseja importar?",
-        "success_mc": "{created} card(s) adicionado(s) a '{deck}'.",
-        "success_skipped": " {skipped} duplicata(s) ignorada(s).",
-        "success_errors": " {errors} card(s) ignorado(s) por erro (conteúdo inválido).",
-        "success_cloze": "{created} card(s) Cloze adicionado(s) a '{deck}'.",
-        # ObsidianExporterDialog
-        "exporter_title": "Export to Obsidian",
-        "tab_export": "Exportar",
-        "tab_model": "Modelo",
-        "lbl_template": "Template:",
-        "lbl_source_deck": "Source deck:",
-        "lbl_cards": "Cards:",
-        "lbl_vault": "Vault:",
-        "vault_hint": "Clique em Browse para selecionar o vault",
-        "btn_browse": "Browse...",
-        "lbl_output": "Output folder:",
-        "output_hint": "Pasta relativa dentro do vault (opcional)",
-        "lbl_note_title": "Note title:",
-        "title_hint": "ex: COM130 Semana 3 — Revisão Anki",
-        "btn_cancel_exp": "Cancelar",
-        "btn_export": "Export →",
-        "cards_summary": "{total} total ({mc} MC, {cloze} Cloze)",
-        "no_cards": "Nenhum card encontrado",
-        "btn_new": "Novo",
-        "btn_duplicate": "Duplicar",
-        "btn_delete": "Excluir",
-        "btn_save": "Salvar",
-        "lbl_filename": "Nome do ficheiro:",
-        "lbl_vars": (
-            "Variáveis: {{title}}  {{date}}  {{deck}}  {{tags}}\n"
-            "{{cards}}  {{mc_cards}}  {{cloze_cards}}\n"
-            "{{cards_callouts}}  {{mc_cards_callouts}}  {{cloze_cards_callouts}}"
-        ),
-        "col_type": "Tipo",
-        "col_property": "Propriedade",
-        "col_value": "Valor",
-        "btn_add_prop": "+ Adicionar propriedade",
-        "btn_import_obs": "Importar do Obsidian",
-        "lbl_content": "Conteúdo da nota:",
-        "btn_reset": "Repor padrões",
-        "prop_key_hint": "Propriedade",
-        "prop_val_hint": "Valor ou {{variável}}",
-        "dlg_vault_title": "Selecionar Vault do Obsidian",
-        "dlg_folder_title": "Selecionar pasta de saída",
-        "obs_props_imported": "{n} propriedade(s) disponíveis.\nClica em '+ Adicionar propriedade' e escolhe da lista.",
-        "template_saved": "Template '{name}' guardado.",
-        "dlg_new_tmpl_title": "Novo template",
-        "dlg_new_tmpl_label": "Nome do novo template:",
-        "warn_tmpl_exists": "Já existe um template com o nome '{name}'.",
-        "dlg_dup_tmpl_title": "Duplicar template",
-        "dlg_dup_tmpl_label": "Nome do template duplicado:",
-        "dlg_del_tmpl_title": "Excluir template",
-        "dlg_del_tmpl_body": "Excluir o template '{name}'?",
-        "warn_last_tmpl": "Não é possível excluir o único template.",
-        "warn_config_save": "Erro ao guardar configuração:\n{e}",
-        "warn_no_vault_props": "Vault não configurado.\nConfigure o vault na aba Exportar antes de importar propriedades.",
-        "warn_types_not_found": "Ficheiro não encontrado:\n{path}\n\nCertifica-te de que o vault está correto e tem propriedades definidas.",
-        "warn_types_error": "Erro ao ler types.json:\n{e}",
-        "warn_no_properties": "Nenhuma propriedade encontrada em types.json.",
-        "warn_vault_missing": "Vault não configurado ou não encontrado.\nClique em Browse para selecionar o vault.",
-        "warn_mkdir_failed": "Não foi possível criar a pasta:\n{path}\n\n{e}",
-        "confirm_overwrite_title": "Ficheiro já existe",
-        "confirm_overwrite_body": "'{filename}' já existe na pasta de destino.\nSobrescrever?",
-        "warn_write_failed": "Não foi possível escrever o ficheiro:\n{path}\n\n{e}",
-        "success_export": "Exportado para Obsidian:\n{path}",
-        # Obsidian export formatting
-        "fmt_mc_heading": "## Questões (Múltipla Escolha)",
-        "fmt_cloze_heading": "## Cloze",
-        "fmt_answer": "Resposta",
-    },
-    "en": {
-        "tag_placeholder": "add tag…",
-        # ImporterDialog
-        "importer_title": "Import from NotebookLM",
-        "btn_prompt_mc": "MC Prompt  📋",
-        "btn_prompt_mc_copied": "Copied! ✓",
-        "btn_prompt_cloze": "Cloze Prompt  📋",
-        "btn_prompt_cloze_copied": "Copied! ✓",
-        "tooltip_prompt_mc": "Copy the multiple choice prompt to clipboard",
-        "tooltip_prompt_cloze": "Copy the Cloze prompt to clipboard",
-        "tab_mc": "Multiple Choice",
-        "tab_cloze": "Cloze",
-        "lbl_deck": "Destination deck:",
-        "lbl_tags": "Tags:",
-        "btn_cancel": "Cancel",
-        "btn_import": "Import →",
-        "mc_instructions": (
-            "Paste the quiz text generated by NotebookLM below.\n"
-            "Each question must follow the format:\n"
-            "  1. Question text\n"
-            "  A) Choice A   B) Choice B\n"
-            "  Answer: A\n"
-            "  Explanation: Explanation text"
-        ),
-        "mc_placeholder": "Paste your NotebookLM quiz text here...",
-        "cloze_instructions": (
-            "Paste the Cloze text generated by NotebookLM below.\n"
-            "One card per line. Format:\n"
-            "  {{c1::term}} is/are [context]."
-        ),
-        "cloze_placeholder": "Paste your NotebookLM Cloze text here...",
-        "lbl_preview": "Preview:",
-        "preview_bad_format": "Unrecognized format — use the MC Prompt 📋 in NotebookLM",
-        "preview_no_questions": "No questions detected — check the format",
-        "preview_no_cloze": "No Cloze cards detected — check the format",
-        "warn_no_text": "Please paste some text before importing.",
-        "warn_no_questions": (
-            "No questions found.\n\n"
-            "Make sure the text follows the expected format:\n"
-            "1. Question text\n"
-            "A) Choice A\n"
-            "Answer: A\n"
-            "Explanation: Explanation"
-        ),
-        "warn_no_cloze": "No Cloze cards found.\n\nEach line must contain {{c1::term}}.",
-        "warn_no_note_type": "Multiple Choice Quiz note type not found. Please restart Anki.",
-        "warn_no_cloze_type": "Native Cloze note type not found in your collection.",
-        "confirm_import_title": "Confirm import",
-        "confirm_mc_body": "<b>{n}</b> card(s) will be added",
-        "confirm_cloze_body": "<b>{n}</b> Cloze card(s) found",
-        "confirm_deck_lbl": "Deck:",
-        "confirm_tags_lbl": "Tags:",
-        "confirm_none": "(none)",
-        "confirm_proceed": "Proceed with import?",
-        "success_mc": "{created} card(s) added to '{deck}'.",
-        "success_skipped": " {skipped} duplicate(s) skipped.",
-        "success_errors": " {errors} card(s) skipped due to errors (invalid content).",
-        "success_cloze": "{created} Cloze card(s) added to '{deck}'.",
-        # ObsidianExporterDialog
-        "exporter_title": "Export to Obsidian",
-        "tab_export": "Export",
-        "tab_model": "Template",
-        "lbl_template": "Template:",
-        "lbl_source_deck": "Source deck:",
-        "lbl_cards": "Cards:",
-        "lbl_vault": "Vault:",
-        "vault_hint": "Click Browse to select the vault",
-        "btn_browse": "Browse...",
-        "lbl_output": "Output folder:",
-        "output_hint": "Relative folder inside the vault (optional)",
-        "lbl_note_title": "Note title:",
-        "title_hint": "e.g.: COM130 Week 3 — Anki Review",
-        "btn_cancel_exp": "Cancel",
-        "btn_export": "Export →",
-        "cards_summary": "{total} total ({mc} MC, {cloze} Cloze)",
-        "no_cards": "No cards found",
-        "btn_new": "New",
-        "btn_duplicate": "Duplicate",
-        "btn_delete": "Delete",
-        "btn_save": "Save",
-        "lbl_filename": "File name:",
-        "lbl_vars": (
-            "Variables: {{title}}  {{date}}  {{deck}}  {{tags}}\n"
-            "{{cards}}  {{mc_cards}}  {{cloze_cards}}\n"
-            "{{cards_callouts}}  {{mc_cards_callouts}}  {{cloze_cards_callouts}}"
-        ),
-        "col_type": "Type",
-        "col_property": "Property",
-        "col_value": "Value",
-        "btn_add_prop": "+ Add property",
-        "btn_import_obs": "Import from Obsidian",
-        "lbl_content": "Note content:",
-        "btn_reset": "Reset defaults",
-        "prop_key_hint": "Property",
-        "prop_val_hint": "Value or {{variable}}",
-        "dlg_vault_title": "Select Obsidian Vault",
-        "dlg_folder_title": "Select output folder",
-        "obs_props_imported": "{n} property(ies) available.\nClick '+ Add property' and choose from the list.",
-        "template_saved": "Template '{name}' saved.",
-        "dlg_new_tmpl_title": "New template",
-        "dlg_new_tmpl_label": "New template name:",
-        "warn_tmpl_exists": "A template named '{name}' already exists.",
-        "dlg_dup_tmpl_title": "Duplicate template",
-        "dlg_dup_tmpl_label": "Duplicated template name:",
-        "dlg_del_tmpl_title": "Delete template",
-        "dlg_del_tmpl_body": "Delete template '{name}'?",
-        "warn_last_tmpl": "Cannot delete the only template.",
-        "warn_config_save": "Error saving configuration:\n{e}",
-        "warn_no_vault_props": "Vault not configured.\nSet the vault in the Export tab before importing properties.",
-        "warn_types_not_found": "File not found:\n{path}\n\nMake sure the vault is correct and has properties defined.",
-        "warn_types_error": "Error reading types.json:\n{e}",
-        "warn_no_properties": "No properties found in types.json.",
-        "warn_vault_missing": "Vault not configured or not found.\nClick Browse to select the vault.",
-        "warn_mkdir_failed": "Could not create folder:\n{path}\n\n{e}",
-        "confirm_overwrite_title": "File already exists",
-        "confirm_overwrite_body": "'{filename}' already exists in the destination folder.\nOverwrite?",
-        "warn_write_failed": "Could not write file:\n{path}\n\n{e}",
-        "success_export": "Exported to Obsidian:\n{path}",
-        # Obsidian export formatting
-        "fmt_mc_heading": "## Multiple Choice Questions",
-        "fmt_cloze_heading": "## Cloze",
-        "fmt_answer": "Answer",
-    },
-}
+from .i18n import _STRINGS, _t, _set_lang, get_lang
+from .parsers import (
+    parse_questions, parse_questions_report,
+    parse_cloze, _escape_search, _render_content,
+    _anki_tags_to_obsidian, _render_template, _yaml_quote,
+    _build_obsidian_note,
+)
 
 
-def _get_lang() -> str:
-    import json, os
-    meta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "meta.json")
-    if os.path.isfile(meta):
-        try:
-            return json.loads(open(meta, encoding="utf-8-sig").read()).get(
-                "config", {}).get("language", "pt")
-        except Exception:
-            pass
-    return "pt"
-
-
-_lang: str = _get_lang()
-
-
-def _t(key: str, **kw) -> str:
-    s = _STRINGS.get(_lang, _STRINGS["pt"]).get(key, _STRINGS["pt"].get(key, key))
-    return s.format(**kw) if kw else s
-
-
-def _set_lang(lang: str) -> None:
-    global _lang
-    import json, os
-    _lang = lang
-    meta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "meta.json")
-    try:
-        data: dict = {}
-        if os.path.isfile(meta):
-            data = json.loads(open(meta, encoding="utf-8").read())
-        data.setdefault("config", {})["language"] = lang
-        with open(meta, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-    except Exception:
-        pass
 
 
 # ---------------------------------------------------------------------------
@@ -419,11 +138,11 @@ _PROMPT_CLOZE = {
 
 
 def _prompt_mc() -> str:
-    return _PROMPT_MC.get(_lang, _PROMPT_MC["pt"])
+    return _PROMPT_MC.get(get_lang(), _PROMPT_MC["pt"])
 
 
 def _prompt_cloze() -> str:
-    return _PROMPT_CLOZE.get(_lang, _PROMPT_CLOZE["pt"])
+    return _PROMPT_CLOZE.get(get_lang(), _PROMPT_CLOZE["pt"])
 
 # These are the fields the user will fill in when creating a card.
 # "Explanation" is optional — the card will work without it.
@@ -558,7 +277,7 @@ FRONT_TEMPLATE = """
 
       if (chosen === correctAnswer) {
         button.classList.add("correct");
-        feedback.textContent = "✓ Correct!";
+        feedback.textContent = "%%AMCQ_CORRECT%%";
         feedback.className = "feedback correct-msg";
       } else {
         button.classList.add("wrong");
@@ -570,7 +289,7 @@ FRONT_TEMPLATE = """
             correctVisual = btn.dataset.visual;
           }
         });
-        feedback.textContent = "✗ Wrong. The correct answer is " + correctVisual + ".";
+        feedback.textContent = "%%AMCQ_WRONG%%" + correctVisual + ".";
         feedback.className = "feedback wrong-msg";
       }
     }
@@ -629,7 +348,7 @@ BACK_TEMPLATE = """
   <!-- Optional explanation — only shown if the field is filled -->
   {{#Explanation}}
   <div class="explanation">
-    <span class="explanation-label">Explanation</span>
+    <span class="explanation-label">%%AMCQ_EXPLLABEL%%</span>
     {{Explanation}}
   </div>
   {{/Explanation}}
@@ -672,7 +391,7 @@ BACK_TEMPLATE = """
     const correctIndex = choices.findIndex(c => c.letter === correctAnswer);
     const correctVisual = correctIndex >= 0 ? visualLabels[correctIndex] : correctAnswer;
     const banner = document.getElementById("correct-banner");
-    banner.textContent = "✓ Correct answer: " + correctVisual;
+    banner.textContent = "%%AMCQ_BANNER%%" + correctVisual;
 
     // Highlight any ```code``` blocks (question, choices, explanation).
     __amcqHl();
@@ -683,13 +402,56 @@ BACK_TEMPLATE = """
 # CSS styles shared between front and back templates.
 # Anki applies this to both sides of the card automatically.
 CARD_CSS = """
+/* ── Paleta ───────────────────────────────────────────────────
+   O escuro é o default — é o que o addon sempre mostrou, e vale
+   para qualquer contexto onde a classe de tema não chegue. O Anki
+   marca o modo noturno com .nightMode (.night_mode no AnkiDroid),
+   por isso a ausência dessas classes é o sinal de tema claro. */
+.card {
+  --amcq-bg: #1a1a2e;
+  --amcq-fg: #e0e0e0;
+  --amcq-question: #ffffff;
+  --amcq-surface: #16213e;
+  --amcq-border: #0f3460;
+  --amcq-hover: #0f3460;
+  --amcq-accent: #e94560;
+  --amcq-badge-bg: #0f3460;
+  --amcq-badge-fg: #a0c4ff;
+  --amcq-muted: #c0c0d0;
+  --amcq-ok: #2ecc71;
+  --amcq-ok-bg: #0d3b2e;
+  --amcq-ok-on: #0d3b2e;
+  --amcq-bad: #e74c3c;
+  --amcq-bad-bg: #3b0d0d;
+  --amcq-bad-on: #ffffff;
+}
+
+.card:not(.nightMode):not(.night_mode) {
+  --amcq-bg: #fbfbfd;
+  --amcq-fg: #1c1c28;
+  --amcq-question: #0f0f1a;
+  --amcq-surface: #ffffff;
+  --amcq-border: #d5d9e2;
+  --amcq-hover: #eef2fa;
+  --amcq-accent: #c2185b;
+  --amcq-badge-bg: #e6ecf8;
+  --amcq-badge-fg: #1e4fa3;
+  --amcq-muted: #4a4a5a;
+  --amcq-ok: #1b7f4b;
+  --amcq-ok-bg: #e6f6ed;
+  --amcq-ok-on: #ffffff;
+  --amcq-bad: #c0392b;
+  --amcq-bad-bg: #fdecea;
+  --amcq-bad-on: #ffffff;
+}
+
 /* ── Base card layout ─────────────────────────────────────── */
 .card {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 16px;
   line-height: 1.6;
-  background-color: #1a1a2e;
-  color: #e0e0e0;
+  background-color: var(--amcq-bg);
+  color: var(--amcq-fg);
   margin: 0;
   padding: 0;
 }
@@ -704,7 +466,7 @@ CARD_CSS = """
 .question {
   font-size: 17px;
   font-weight: 500;
-  color: #ffffff;
+  color: var(--amcq-question);
   margin-bottom: 20px;
   line-height: 1.5;
 }
@@ -721,13 +483,13 @@ CARD_CSS = """
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #16213e;
-  border: 1px solid #0f3460;
+  background: var(--amcq-surface);
+  border: 1px solid var(--amcq-border);
   border-radius: 8px;
   padding: 12px 16px;
   cursor: pointer;
   text-align: left;
-  color: #e0e0e0;
+  color: var(--amcq-fg);
   font-size: 15px;
   transition: background 0.15s, border-color 0.15s;
   width: 100%;
@@ -735,8 +497,8 @@ CARD_CSS = """
 
 /* Hover effect — only when the button is still enabled */
 .choice:not(:disabled):hover {
-  background: #0f3460;
-  border-color: #e94560;
+  background: var(--amcq-hover);
+  border-color: var(--amcq-accent);
 }
 
 .choice:disabled {
@@ -751,8 +513,8 @@ CARD_CSS = """
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #0f3460;
-  color: #a0c4ff;
+  background: var(--amcq-badge-bg);
+  color: var(--amcq-badge-fg);
   font-weight: 600;
   font-size: 13px;
   flex-shrink: 0;
@@ -762,24 +524,24 @@ CARD_CSS = """
 
 /* Correct answer highlight */
 .choice.correct {
-  background: #0d3b2e;
-  border-color: #2ecc71;
+  background: var(--amcq-ok-bg);
+  border-color: var(--amcq-ok);
 }
 
 .choice.correct .letter {
-  background: #2ecc71;
-  color: #0d3b2e;
+  background: var(--amcq-ok);
+  color: var(--amcq-ok-on);
 }
 
 /* Wrong answer highlight */
 .choice.wrong {
-  background: #3b0d0d;
-  border-color: #e74c3c;
+  background: var(--amcq-bad-bg);
+  border-color: var(--amcq-bad);
 }
 
 .choice.wrong .letter {
-  background: #e74c3c;
-  color: #fff;
+  background: var(--amcq-bad);
+  color: var(--amcq-bad-on);
 }
 
 /* Feedback text below choices */
@@ -790,18 +552,18 @@ CARD_CSS = """
   margin-top: 8px;
 }
 
-.feedback.correct-msg { color: #2ecc71; }
-.feedback.wrong-msg   { color: #e74c3c; }
+.feedback.correct-msg { color: var(--amcq-ok); }
+.feedback.wrong-msg   { color: var(--amcq-bad); }
 
 /* ── Explanation (back side) ──────────────────────────────── */
 .explanation {
   margin-top: 20px;
   padding: 14px 16px;
-  background: #16213e;
-  border-left: 3px solid #a0c4ff;
+  background: var(--amcq-surface);
+  border-left: 3px solid var(--amcq-badge-fg);
   border-radius: 4px;
   font-size: 14px;
-  color: #c0c0d0;
+  color: var(--amcq-muted);
   line-height: 1.6;
 }
 
@@ -811,7 +573,7 @@ CARD_CSS = """
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #a0c4ff;
+  color: var(--amcq-badge-fg);
   margin-bottom: 6px;
 }
 
@@ -819,12 +581,12 @@ CARD_CSS = """
 .correct-banner {
   margin-top: 12px;
   padding: 10px 16px;
-  background: #0d3b2e;
-  border: 1px solid #2ecc71;
+  background: var(--amcq-ok-bg);
+  border: 1px solid var(--amcq-ok);
   border-radius: 8px;
   font-size: 15px;
   font-weight: 500;
-  color: #2ecc71;
+  color: var(--amcq-ok);
 }
 
 /* ── Code blocks (```fenced```) ───────────────────────────── */
@@ -878,7 +640,30 @@ code.hljs{padding:3px 5px}
 # stored in the note type, and re-syncs the templates if they differ.
 # This ensures users who already have the addon always get the latest templates
 # after updating, without losing any of their cards.
-TEMPLATE_VERSION = "1.2.0"
+TEMPLATE_VERSION = "1.3.0"
+
+
+def _localized_template(template: str) -> str:
+    """Resolve os marcadores %%AMCQ_*%% com o texto do idioma ativo.
+
+    Os templates são strings de módulo, avaliadas uma vez no import, mas o texto
+    que o estudante lê no card tem de acompanhar o idioma escolhido. Os `{{...}}`
+    do Anki já significam campos, daí os marcadores usarem `%%`.
+    """
+    replacements = {
+        "%%AMCQ_CORRECT%%": _t("card_correct"),
+        "%%AMCQ_WRONG%%": _t("card_wrong"),
+        "%%AMCQ_BANNER%%": _t("card_banner"),
+        "%%AMCQ_EXPLLABEL%%": _t("card_explanation_label"),
+    }
+    for token, value in replacements.items():
+        template = template.replace(token, value.replace('"', "'"))
+    return template
+
+
+def _template_version() -> str:
+    """A versão inclui o idioma para que trocá-lo re-sincronize os cards."""
+    return "%s-%s" % (TEMPLATE_VERSION, get_lang())
 
 
 def create_note_type():
@@ -894,6 +679,8 @@ def create_note_type():
     col = mw.col
 
     existing = col.models.by_name(NOTE_TYPE_NAME)
+    front = _localized_template(FRONT_TEMPLATE)
+    back = _localized_template(BACK_TEMPLATE)
 
     if not existing:
         # ── First install: build the note type from scratch ──────────────
@@ -904,13 +691,13 @@ def create_note_type():
             col.models.add_field(model, field)
 
         template = col.models.new_template("Card 1")
-        template["qfmt"] = FRONT_TEMPLATE
-        template["afmt"] = BACK_TEMPLATE
+        template["qfmt"] = front
+        template["afmt"] = back
         model["css"] = CARD_CSS
 
         # Store the current template version inside the note type so future
         # runs can detect whether an update is needed.
-        model["vers"] = [TEMPLATE_VERSION]
+        model["vers"] = [_template_version()]
 
         col.models.add_template(model, template)
         col.models.add(model)
@@ -920,370 +707,30 @@ def create_note_type():
         # ── Existing install: sync templates if version changed ───────────
         stored_version = (existing.get("vers") or ["0"])[0]
 
-        if stored_version == TEMPLATE_VERSION:
+        if stored_version == _template_version():
             return  # Already up to date — nothing to do
 
         # Update the front template, back template, and CSS.
         # The "tmpls" key holds the list of card templates inside the model.
         # We only have one template ("Card 1"), so we update index 0.
-        existing["tmpls"][0]["qfmt"] = FRONT_TEMPLATE
-        existing["tmpls"][0]["afmt"] = BACK_TEMPLATE
+        existing["tmpls"][0]["qfmt"] = front
+        existing["tmpls"][0]["afmt"] = back
         existing["css"] = CARD_CSS
-        existing["vers"] = [TEMPLATE_VERSION]
+        existing["vers"] = [_template_version()]
 
         col.models.save(existing)
 
 
-# ---------------------------------------------------------------------------
-# Question parser
-# ---------------------------------------------------------------------------
+def _resync_note_type() -> None:
+    """Re-grava os templates depois de o idioma mudar, sem interromper o utilizador.
 
-
-def parse_questions(text: str) -> list:
+    Trocar de idioma tem de mudar também o que o card diz durante a revisão; se
+    a coleção não deixar escrever agora, o arranque seguinte trata disso.
     """
-    Parses NotebookLM quiz text into a list of question dicts.
-
-    Handles both formats:
-    - Numbered:   "1. Question A) Choice Resposta: A Explicação: text."
-    - Unnumbered: "Question A) Choice Resposta: A Explicação: text."
-
-    Returns list of dicts with keys: question, A, B, C, D, E, answer, explanation
-    """
-
-    text = text.replace('\r\n', '\n').replace('\r', '\n').strip()
-    # Shield fenced code blocks from the line-based parsing below.
-    text, _code_blocks = _protect_code_blocks(text)
-    # Strip preamble before the first question.
-    # Numbered format (multiline): "^1." at start of line.
-    # Numbered format (single-line block): "\b1." at word boundary.
-    # Unnumbered format: drop leading lines that contain neither choices (A))
-    # nor an answer marker, since those lines are titles/headings.
-    numbered = re.search(r'(?m)^1[\.\)]', text)
-    if not numbered:
-        numbered = re.search(r'\b1[\.\)]\s', text)
-    if numbered:
-        text = text[numbered.start():]
-    else:
-        lines = text.split('\n')
-        while lines and 'A)' not in lines[0] and 'Resposta:' not in lines[0] and 'Answer:' not in lines[0]:
-            lines.pop(0)
-        text = '\n'.join(lines)
-
-    questions = []
-
-    # Match the full tail of each question as a single unit.
-    # Lookahead alternatives handle:
-    #   \n\s*\n         — blank line between questions
-    #   \n\d+[\.\)]     — numbered question on next line
-    #   \s+\d+[\.\)]\s  — numbered question on same line (single-line paste)
-    #   \n              — unnumbered questions, one per line
-    #   \Z              — end of string
-    tail_re = re.compile(
-        r'(?:Resposta|Answer):\s*([A-Ea-e])\s*\n?\s*(?:Explica[çc][aã]o|Explanation):\s*(.+?)(?=\n\s*\n|\n\d+[\.\)]|\s+\d+[\.\)]\s|\n|\Z)',
-        re.IGNORECASE | re.DOTALL
-    )
-    choice_re = re.compile(
-        r'\b([A-E])\)\s*(.+?)(?=\s+[A-E]\)|\s*(?:Resposta|Answer):|$)', re.DOTALL)
-
-    tail_matches = list(tail_re.finditer(text))
-    if not tail_matches:
-        return []
-
-    def last_a_before(pos):
-        matches = list(re.finditer(r'\bA\)', text[:pos]))
-        return matches[-1].start() if matches else None
-
-    for i, tail in enumerate(tail_matches):
-        answer = tail.group(1).upper()
-        explanation = tail.group(2).strip()
-
-        # ── Choices ────────────────────────────────────────────────────────
-        choices_start = last_a_before(tail.start())
-        if choices_start is None:
-            continue
-
-        choices_block = text[choices_start:tail.start()]
-        choices = {}
-        for cm in choice_re.finditer(choices_block):
-            choices[cm.group(1).upper()] = _restore_code_blocks(
-                cm.group(2).strip().rstrip('.'), _code_blocks)
-
-        # ── Question text ──────────────────────────────────────────────────
-        if i == 0:
-            raw_question = text[:choices_start].strip()
-        else:
-            raw_question = text[tail_matches[i - 1].end()                                :choices_start].strip()
-
-        # Strip leading question numbers like "1. " or "1) "
-        raw_question = re.sub(r'^\d+[\.\)]\s*', '', raw_question)
-        raw_question = _restore_code_blocks(raw_question, _code_blocks)
-        explanation = _restore_code_blocks(explanation, _code_blocks)
-
-        if raw_question and answer:
-            q = {"question": raw_question, "answer": answer,
-                 "explanation": explanation}
-            q.update(choices)
-            questions.append(q)
-
-    return questions
-
-
-def parse_cloze(text: str) -> list:
-    """Returns individual cloze sentences containing at least one {{cN::}} marker.
-
-    Handles two layouts:
-    - One card per line (standard NotebookLM output)
-    - Multiple sentences concatenated in a paragraph (split on '. {{c' boundaries)
-    """
-    # Shield fenced code blocks so a multi-line block stays on one logical card.
-    text, blocks = _protect_code_blocks(text)
-
-    results = []
-    # NotebookLM separates cards with a blank line, so process blank-line
-    # separated chunks. A chunk that carries a code block is kept whole (its
-    # ```...``` lives on its own line and has no {{c marker); chunks without a
-    # code block keep the original line-based behavior (one card per line, and
-    # paragraphs holding several {{c are split into separate cards).
-    for chunk in re.split(r'\n[ \t]*\n', text):
-        if "{{c" not in chunk:
-            continue
-        if "\x00CB" in chunk:
-            results.append(chunk.strip())
-            continue
-        for line in chunk.splitlines():
-            line = line.strip()
-            if not line or "{{c" not in line:
-                continue
-            if line.count("{{c") > 1:
-                parts = re.split(r'(?<=\.)\s+(?=\{\{c)', line)
-                results.extend(p.strip() for p in parts if "{{c" in p)
-            else:
-                results.append(line)
-    return [_restore_code_blocks(r, blocks) for r in results]
-
-
-def _escape_search(text: str) -> str:
-    """Escape characters that are special to Anki's search syntax.
-
-    Without this, a question/card containing a double quote (common in
-    NotebookLM output, e.g. Qual o significado de "API"?) breaks the quoted
-    search term and raises anki.errors.SearchError. Backslash must be escaped
-    first so the escapes we add are not doubled.
-    """
-    return (
-        text.replace("\\", "\\\\")
-        .replace('"', '\\"')
-        .replace("*", "\\*")
-        .replace("_", "\\_")
-    )
-
-
-def _html_escape(text: str) -> str:
-    """Escape HTML-special characters so code snippets survive intact.
-
-    Java/C++ answers contain characters like <, > and & (e.g. vector<int>,
-    a < b, System&). Anki renders card fields as HTML, so unescaped angle
-    brackets are swallowed as unknown tags. Ampersand must be escaped first.
-    """
-    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-
-# ---------------------------------------------------------------------------
-# Code blocks (Markdown fenced ``` / inline `code`) → highlighted HTML
-# ---------------------------------------------------------------------------
-# The parsers below work line-by-line, so a multi-line fenced code block would
-# be torn apart (its inner newlines look like question/card boundaries). To
-# avoid that, _protect_code_blocks() replaces every ```...``` block with a
-# single-line, regex-inert placeholder (NUL-delimited, no A)/Resposta:/digit.
-# patterns) before parsing, and _restore_code_blocks() puts them back on the
-# extracted field text afterwards. _render_content() then turns the restored
-# fences into <pre><code> markup that highlight.js colors on the card.
-
-_FENCE_RE = re.compile(r"```([A-Za-z0-9+#._-]*)[ \t]*\n?(.*?)```", re.DOTALL)
-_INLINE_CODE_RE = re.compile(r"`([^`\n]+)`")
-_PLACEHOLDER_RE = re.compile("\x00CB(\\d+)\x00")
-
-# Inline base styling so a code block still looks like a dark code box even on
-# note types whose template does NOT load highlight.js (e.g. the native Cloze
-# type). On the Multiple Choice cards, highlight.js + CARD_CSS layer colors and
-# line numbers on top of this.
-_CODE_PRE_STYLE = (
-    "background:#282c34;color:#abb2bf;padding:12px 14px;border-radius:8px;"
-    "overflow-x:auto;font-family:'JetBrains Mono',Consolas,'Courier New',monospace;"
-    "font-size:13.5px;line-height:1.5;white-space:pre;tab-size:4;margin:12px 0;"
-    "text-align:left"
-)
-
-
-def _protect_code_blocks(text: str):
-    """Replace ```...``` blocks with inert single-line placeholders.
-
-    Returns (protected_text, blocks) where blocks[i] is the original fenced
-    block (including its backticks). An unclosed fence is left untouched.
-    """
-    blocks = []
-
-    def _stash(m):
-        blocks.append(m.group(0))
-        return "\x00CB%d\x00" % (len(blocks) - 1)
-
-    return _FENCE_RE.sub(_stash, text), blocks
-
-
-def _restore_code_blocks(text: str, blocks: list) -> str:
-    """Reverse _protect_code_blocks() on a (possibly sliced) piece of text."""
-    if not blocks:
-        return text
-
-    def _unstash(m):
-        idx = int(m.group(1))
-        return blocks[idx] if 0 <= idx < len(blocks) else m.group(0)
-
-    return _PLACEHOLDER_RE.sub(_unstash, text)
-
-
-def _render_inline(text: str) -> str:
-    """HTML-escape text, turning `inline code` spans into <code> elements."""
-    parts = []
-    last = 0
-    for m in _INLINE_CODE_RE.finditer(text):
-        parts.append(_html_escape(text[last:m.start()]))
-        parts.append(
-            '<code class="amcq-inline">%s</code>' % _html_escape(m.group(1))
-        )
-        last = m.end()
-    parts.append(_html_escape(text[last:]))
-    return "".join(parts)
-
-
-def _render_content(text: str) -> str:
-    """Convert a field's text to Anki-ready HTML.
-
-    Fenced ```lang code``` blocks become <pre><code class="language-lang"> so
-    highlight.js can color them; inline `code` becomes <code>; everything else
-    is HTML-escaped exactly as _html_escape would do. Safe to call on plain
-    text with no code (it just escapes).
-    """
-    out = []
-    last = 0
-    for m in _FENCE_RE.finditer(text):
-        out.append(_render_inline(text[last:m.start()]))
-        lang = m.group(1).strip().lower()
-        code = m.group(2).strip("\n")
-        cls = ' class="language-%s"' % lang if lang else ""
-        out.append(
-            '<pre class="amcq-code" style="%s"><code%s>%s</code></pre>'
-            % (_CODE_PRE_STYLE, cls, _html_escape(code))
-        )
-        last = m.end()
-    out.append(_render_inline(text[last:]))
-    return "".join(out)
-
-
-# ---------------------------------------------------------------------------
-# Obsidian export helpers
-# ---------------------------------------------------------------------------
-
-def _anki_tags_to_obsidian(tags_list: list) -> list:
-    """Convert Anki tags to Obsidian format, preserving :: hierarchy as /."""
-    result = []
-    for tag in tags_list:
-        obs_tag = tag.replace("::", "/")
-        if obs_tag and obs_tag not in result:
-            result.append(obs_tag)
-    return result
-
-
-def _format_mc_cards(mc_notes: list) -> str:
-    body = f"{_t('fmt_mc_heading')}\n\n"
-    for i, q in enumerate(mc_notes, 1):
-        body += f"{i}. {q.get('question', '')}\n"
-        for letter in "ABCDE":
-            if q.get(letter):
-                body += f"   {letter}) {q[letter]}\n"
-        ans = q.get("answer", "")
-        expl = q.get("explanation", "")
-        body += f"   **{_t('fmt_answer')}: {ans}**"
-        body += f" — {expl}\n\n" if expl else "\n\n"
-    return body
-
-
-def _format_cloze_cards(cloze_notes: list) -> str:
-    body = f"{_t('fmt_cloze_heading')}\n\n"
-    for c in cloze_notes:
-        body += f"- {c}\n"
-    return body
-
-
-def _format_mc_callouts(mc_notes: list) -> str:
-    body = f"{_t('fmt_mc_heading')}\n\n"
-    for i, q in enumerate(mc_notes, 1):
-        body += f"> [!question] {i}. {q.get('question', '')}\n"
-        for letter in "ABCDE":
-            if q.get(letter):
-                body += f"> {letter}) {q[letter]}\n"
-        ans = q.get("answer", "")
-        expl = q.get("explanation", "")
-        body += f">\n> **{_t('fmt_answer')}: {ans}**"
-        body += f" — {expl}\n\n" if expl else "\n\n"
-    return body
-
-
-def _format_cloze_callouts(cloze_notes: list) -> str:
-    body = f"{_t('fmt_cloze_heading')}\n\n"
-    for c in cloze_notes:
-        body += f"> [!info]\n> {c}\n\n"
-    return body
-
-
-def _render_template(template: str, variables: dict) -> str:
-    for key, value in variables.items():
-        template = template.replace("{{" + key + "}}", value)
-    return template
-
-
-def _yaml_quote(value: str) -> str:
-    """Wrap YAML value in double quotes when needed to preserve string type."""
-    special = set('[]{}|>#!:,\\')
-    stripped = value.strip()
-    needs_quotes = (
-        any(c in value for c in special)
-        or stripped.lstrip('-').replace('.', '', 1).isdigit()
-        or stripped.lower() in ('true', 'false', 'null', 'yes', 'no', '')
-    )
-    if needs_quotes:
-        return '"' + value.replace('\\', '\\\\').replace('"', '\\"') + '"'
-    return value
-
-
-def _build_obsidian_note(title: str, deck_name: str, obs_tags: list,
-                         mc_notes: list, cloze_notes: list,
-                         tmpl_properties: str, tmpl_content: str) -> str:
-    from datetime import date
-    tags_yaml = "\n".join(f"  - {t}" for t in obs_tags)
-    mc_str = _format_mc_cards(mc_notes) if mc_notes else ""
-    cloze_str = _format_cloze_cards(cloze_notes) if cloze_notes else ""
-    mc_callouts = _format_mc_callouts(mc_notes) if mc_notes else ""
-    cloze_callouts = _format_cloze_callouts(cloze_notes) if cloze_notes else ""
-    sep = "\n" if mc_str and cloze_str else ""
-    cards_str = (mc_str + sep + cloze_str).strip()
-    sep_c = "\n" if mc_callouts and cloze_callouts else ""
-    cards_callouts_str = (mc_callouts + sep_c + cloze_callouts).strip()
-    variables = {
-        "title": title,
-        "date": date.today().isoformat(),
-        "deck": deck_name,
-        "tags": tags_yaml,
-        "cards": cards_str,
-        "mc_cards": mc_str.strip(),
-        "cloze_cards": cloze_str.strip(),
-        "cards_callouts": cards_callouts_str,
-        "mc_cards_callouts": mc_callouts.strip(),
-        "cloze_cards_callouts": cloze_callouts.strip(),
-    }
-    props = _render_template(tmpl_properties, variables)
-    content = _render_template(tmpl_content, variables)
-    return f"---\n{props}\n---\n\n{content}\n"
+    try:
+        create_note_type()
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -1467,8 +914,9 @@ class ImporterDialog(QDialog):
         # ── Language toggle ───────────────────────────────────────────────
         lang_row = QHBoxLayout()
         lang_row.addStretch()
-        for code, disp in [("pt", "PT"), ("en", "EN")]:
-            lbl = QLabel(f"<b>{disp}</b>" if _lang == code else disp)
+        for code in sorted(_STRINGS):
+            disp = code.upper()
+            lbl = QLabel(f"<b>{disp}</b>" if get_lang() == code else disp)
             lbl.setStyleSheet("color: #ccc; padding: 2px 8px; border: 1px solid #555; border-radius: 3px;")
             lbl.setCursor(Qt.CursorShape.PointingHandCursor)
             lbl.mousePressEvent = lambda _, c=code: self._switch_lang(c)
@@ -1545,7 +993,8 @@ class ImporterDialog(QDialog):
         self.mc_input.setPlaceholderText(_t("mc_placeholder"))
         layout.addWidget(self.mc_input)
 
-        layout.addWidget(QLabel(_t("lbl_preview")))
+        self.mc_preview_label = QLabel(_t("lbl_preview"))
+        layout.addWidget(self.mc_preview_label)
         self.mc_preview = QPlainTextEdit()
         self.mc_preview.setReadOnly(True)
         self.mc_preview.setFixedHeight(130)
@@ -1566,7 +1015,8 @@ class ImporterDialog(QDialog):
         self.cloze_input.setPlaceholderText(_t("cloze_placeholder"))
         layout.addWidget(self.cloze_input)
 
-        layout.addWidget(QLabel(_t("lbl_preview")))
+        self.cloze_preview_label = QLabel(_t("lbl_preview"))
+        layout.addWidget(self.cloze_preview_label)
         self.cloze_preview = QPlainTextEdit()
         self.cloze_preview.setReadOnly(True)
         self.cloze_preview.setFixedHeight(130)
@@ -1574,25 +1024,38 @@ class ImporterDialog(QDialog):
         layout.addWidget(self.cloze_preview)
         return tab
 
+    def _set_preview_count(self, label, n):
+        """Mostra o número contado ao lado de 'Preview:' (só o rótulo quando 0)."""
+        label.setText(_t("lbl_preview_count", n=n) if n else _t("lbl_preview"))
+
     def _update_mc_preview(self):
-        questions = parse_questions(self.mc_input.toPlainText())
-        if not questions:
-            if self.mc_input.toPlainText().strip():
-                raw = self.mc_input.toPlainText()
-                if "Resposta:" not in raw and "Explicação:" not in raw and "Answer:" not in raw and "Explanation:" not in raw:
-                    self.mc_preview.setPlainText(_t("preview_bad_format"))
-                else:
-                    self.mc_preview.setPlainText(_t("preview_no_questions"))
-            else:
-                self.mc_preview.setPlainText("")
+        raw = self.mc_input.toPlainText()
+        if not raw.strip():
+            self._set_preview_count(self.mc_preview_label, 0)
+            self.mc_preview.setPlainText("")
             return
-        blocks = []
-        for i, q in enumerate(questions, 1):
-            blocks.append(f"{i}. {q.get('question', '')}  →  {q.get('answer', '?')}")
-        self.mc_preview.setPlainText("\n\n".join(blocks))
+
+        questions, rejected = parse_questions_report(raw)
+        self._set_preview_count(self.mc_preview_label, len(questions))
+
+        lines = [f"{i}. {q.get('question', '')}  →  {q.get('answer', '?')}"
+                 for i, q in enumerate(questions, 1)]
+
+        # Dizer QUAL bloco falhou e porquê evita a preview vazia que não
+        # explica nada — é o passo em que o estudante percebe o que corrigir.
+        if rejected:
+            first = rejected[0]
+            reason = _t("reason_" + first.get("reason", "no_answer"))
+            if questions:
+                lines.append("")
+            lines.append(_t("preview_ignored", n=len(rejected), reason=reason))
+            lines.append(first.get("excerpt", "").strip())
+
+        self.mc_preview.setPlainText("\n".join(lines))
 
     def _update_cloze_preview(self):
         cards = parse_cloze(self.cloze_input.toPlainText())
+        self._set_preview_count(self.cloze_preview_label, len(cards))
         if not cards:
             if self.cloze_input.toPlainText().strip():
                 self.cloze_preview.setPlainText(_t("preview_no_cloze"))
@@ -1629,6 +1092,7 @@ class ImporterDialog(QDialog):
     def _switch_lang(self, lang: str) -> None:
         _set_lang(lang)
         self._save_tags()
+        _resync_note_type()
         self.close()
         _open_importer()
 
@@ -1675,7 +1139,14 @@ class ImporterDialog(QDialog):
         created = 0
         skipped = 0
         errors = 0
+        oversized = 0
         for q in questions:
+            # O parser lê até 10 alternativas, mas o tipo de nota só tem campos
+            # A–E. Criar o card à mesma perderia alternativas e, se a resposta
+            # certa fosse uma delas, ficaria impossível de acertar.
+            if any(q.get(letter) for letter in "FGHIJ"):
+                oversized += 1
+                continue
             # Any single malformed card (e.g. odd code snippet) is skipped and
             # counted instead of aborting the whole import.
             try:
@@ -1704,6 +1175,8 @@ class ImporterDialog(QDialog):
         msg = _t("success_mc", created=created, deck=deck_name)
         if skipped:
             msg += _t("success_skipped", skipped=skipped)
+        if oversized:
+            msg += _t("success_oversized", n=oversized)
         if errors:
             msg += _t("success_errors", errors=errors)
         showInfo(msg)
@@ -1951,8 +1424,9 @@ class ObsidianExporterDialog(QDialog):
         # ── Language toggle ───────────────────────────────────────────────
         lang_row = QHBoxLayout()
         lang_row.addStretch()
-        for code, disp in [("pt", "PT"), ("en", "EN")]:
-            lbl = QLabel(f"<b>{disp}</b>" if _lang == code else disp)
+        for code in sorted(_STRINGS):
+            disp = code.upper()
+            lbl = QLabel(f"<b>{disp}</b>" if get_lang() == code else disp)
             lbl.setStyleSheet("color: #ccc; padding: 2px 8px; border: 1px solid #555; border-radius: 3px;")
             lbl.setCursor(Qt.CursorShape.PointingHandCursor)
             lbl.mousePressEvent = lambda _, c=code: self._switch_lang(c)
@@ -1968,6 +1442,7 @@ class ObsidianExporterDialog(QDialog):
         _set_lang(lang)
         self._save_active_to_config()
         self._save_config()
+        _resync_note_type()
         self.close()
         _open_obsidian_exporter()
 
@@ -2652,15 +2127,21 @@ def on_main_window_ready():
     Called by Anki once the main window and collection are fully loaded.
     Safe to access mw.col here.
     """
-    create_note_type()
+    # Corre em todo o arranque, mesmo para quem nunca abre o addon: uma falha
+    # aqui não pode virar um traceback do Anki na cara do utilizador.
+    try:
+        create_note_type()
+    except Exception as e:
+        from aqt.utils import showWarning
+        showWarning(_t("warn_notetype_failed", e=e))
     _ensure_media_assets()
     _register_menu()
 
 
 def _register_menu():
-    mw.form.menuTools.addAction("Import from NotebookLM").triggered.connect(
+    mw.form.menuTools.addAction(_t("importer_title")).triggered.connect(
         _open_importer)
-    mw.form.menuTools.addAction("Export to Obsidian").triggered.connect(
+    mw.form.menuTools.addAction(_t("exporter_title")).triggered.connect(
         _open_obsidian_exporter)
 
 
