@@ -1,0 +1,5 @@
+1. O protocolo HTTP é, por definição, um protocolo com estado.
+A) Verdadeiro
+B) Falso
+Resposta: B
+Explicação: O HTTP é sem estado; cada pedido é independente dos anteriores.

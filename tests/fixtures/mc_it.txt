@@ -1,0 +1,39 @@
+1. Quale dispositivo di rete opera principalmente al livello di collegamento dati (Layer 2 del modello OSI) per inoltrare i frame basandosi sugli indirizzi MAC?
+A) Router
+B) Switch
+C) Hub
+D) Gateway
+Risposta: B
+Spiegazione: Lo switch inoltra i frame Ethernet a livello 2 basandosi sulla propria tabella degli indirizzi fisici MAC.
+
+2. In quale modalità di esecuzione del processore gira il codice del kernel per avere accesso illimitato alle istruzioni hardware privilegiate?
+A) User mode
+B) Kernel mode
+C) Safe mode
+D) Standby mode
+Risposta: B
+Spiegazione: La modalità kernel (o privileged mode) concede al sistema operativo il controllo totale sull'hardware e sulla memoria.
+
+3. Quale comando SQL appartiene alla categoria DDL (Data Definition Language) ed è usato per cancellare una tabella e la sua struttura?
+A) DELETE
+B) DROP
+C) TRUNCATE
+D) REMOVE
+Risposta: B
+Spiegazione: Il comando DROP TABLE rimuove in modo permanente la definizione della tabella insieme a tutti i dati memorizzati in essa.
+
+4. Quale delle seguenti strutture dati è comunemente impiegata per implementare una visita in ampiezza (BFS) su un grafo?
+A) Coda
+B) Pila
+C) Albero AVL
+D) Tabella hash
+Risposta: A
+Spiegazione: L'algoritmo Breadth-First Search (BFS) utilizza una coda (FIFO) per esplorare i nodi livello per livello.
+
+5. Quale proprietà ACID assicura che una transazione di database venga eseguita interamente oppure non produca alcun effetto in caso di errore?
+A) Atomicità
+B) Coerenza
+C) Isolamento
+D) Durabilità
+Risposta: A
+Spiegazione: L'atomicità garantisce il principio del "tutto o niente": se una qualsiasi operazione della transazione fallisce, l'intero blocco viene annullato (rollback).

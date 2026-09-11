@@ -1,0 +1,39 @@
+1. ¿Cuál es el protocolo encargado de traducir nombres de dominio en direcciones IP legibles por las máquinas?
+A) HTTP
+B) DNS
+C) FTP
+D) DHCP
+Respuesta: B
+Explicación: El protocolo DNS (Domain Name System) resuelve nombres de dominio en direcciones IP numéricas para localizar recursos en la red.
+
+2. ¿Qué componente del sistema operativo gestiona directamente el hardware y los recursos fundamentales del sistema?
+A) Kernel
+B) Shell
+C) Compilador
+D) Interfaz gráfica
+Respuesta: A
+Explicación: El núcleo o kernel es la parte central del sistema operativo responsable de administrar la memoria, los procesos y el acceso al hardware.
+
+3. En bases de datos relacionales, ¿qué restricción garantiza que un campo identifique de forma única a cada registro de una tabla?
+A) Clave foránea
+B) Clave primaria
+C) Índice secundario
+D) Disparador
+Respuesta: B
+Explicación: La clave primaria (Primary Key) asegura la unicidad de cada fila dentro de una tabla y no admite valores nulos.
+
+4. ¿Cuál es la complejidad temporal en el peor caso del algoritmo de búsqueda binaria sobre un arreglo ordenado de n elementos?
+A) O(1)
+B) O(n)
+C) O(log n)
+D) O(n^2)
+Respuesta: C
+Explicación: La búsqueda binaria divide a la mitad el espacio de búsqueda en cada paso, resultando en una complejidad logarítmica O(log n).
+
+5. ¿Qué comando se utiliza habitualmente en redes para comprobar la conectividad y latencia entre dos nodos mediante paquetes ICMP?
+A) traceroute
+B) ping
+C) netstat
+D) ifconfig
+Respuesta: B
+Explicación: La utilidad ping envía solicitudes de eco ICMP para determinar si un host de destino está accesible y medir el tiempo de respuesta.

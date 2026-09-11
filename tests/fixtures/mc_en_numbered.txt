@@ -1,0 +1,15 @@
+1. Which protocol translates domain names into IP addresses?
+A) TCP
+B) DNS
+C) HTTP
+D) FTP
+Answer: B
+Explanation: DNS maps human-readable domain names to numeric IP addresses.
+
+2. What is the time complexity of binary search on a sorted array?
+A) O(1)
+B) O(n)
+C) O(log n)
+D) O(n log n)
+Answer: C
+Explanation: Each comparison discards half of the remaining range.

@@ -1,0 +1,11 @@
+1. Qual destes NÃO é um sistema de gestão de bases de dados relacional?
+A) PostgreSQL
+B) MySQL
+C) MongoDB
+D) SQLite
+E) Oracle
+F) SQL Server
+G) MariaDB
+H) DB2
+Resposta: C
+Explicação: O MongoDB é orientado a documentos, não relacional.

@@ -1,0 +1,13 @@
+1. Qual comando lista o conteúdo de um diretório em Linux?
+A) cd
+B) ls
+C) mv
+D) rm
+Resposta: B
+
+2. Qual comando mostra o caminho do diretório atual?
+A) pwd
+B) whoami
+C) echo
+D) cat
+Resposta: A

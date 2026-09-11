@@ -1,0 +1,5 @@
+{{c1::TCP/IP}} é o conjunto de protocolos que governa a transmissão de dados na internet.
+
+{{c1::DNS}} é o sistema responsável por traduzir nomes de domínio em endereços IP.
+
+{{c1::A latência}} é o tempo que um pacote demora a viajar da origem até ao destino.

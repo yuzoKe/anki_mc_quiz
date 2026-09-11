@@ -1,0 +1,9 @@
+1. Quem formulou o conceito de máquina universal?
+A. Turing provou que existe uma máquina capaz de simular qualquer outra.
+Esta ideia fundou a computação teórica.
+A) Alan Turing
+B) Alonzo Church
+C) John von Neumann
+D) Kurt Gödel
+Resposta: A
+Explicação: A máquina universal de Turing é o modelo teórico base.

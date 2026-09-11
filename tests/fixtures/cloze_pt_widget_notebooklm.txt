@@ -1,0 +1,17 @@
+Flashcards - Laços
+{{c1::while}} testa a condição antes de cada iteração.
+{{c1::Pós-incremento}} devolve o valor atual e só depois soma um.
+int i = 0;
+while (i < 3) {
+    i++;
+}
+Opção recomendada · Mapa mental
+
+Fluxo de Controlo
+Mapa mental relacionando laços, condições e desvios de fluxo.
+
+Adicionar
+
+Flashcards - Funções
+{{c1::return}} devolve um valor e encerra a execução da função.
+{{c1::Recursão}} é a técnica em que uma função chama a si mesma.

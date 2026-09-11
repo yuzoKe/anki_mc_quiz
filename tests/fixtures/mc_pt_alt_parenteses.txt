@@ -1,0 +1,7 @@
+1. Que algoritmo de ordenação tem melhor caso O(n)?
+(A) Quicksort
+(B) Bubble sort otimizado
+(C) Merge sort
+(D) Heapsort
+Resposta: B
+Explicação: Com uma flag de troca, o bubble sort deteta um array já ordenado numa única passagem.

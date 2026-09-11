@@ -1,0 +1,7 @@
+1. Considere a expressão A) B) usada como rótulo num formulário. Qual afirmação é correta?
+A) Rótulos não podem conter parênteses
+B) Rótulos podem conter qualquer carácter
+C) Rótulos são sempre numéricos
+D) Rótulos são opcionais
+Resposta: B
+Explicação: Não há restrição de caracteres em rótulos de formulário.

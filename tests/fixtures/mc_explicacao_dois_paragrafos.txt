@@ -1,0 +1,18 @@
+1. O que distingue TCP de UDP?
+A) TCP é mais rápido
+B) TCP garante entrega e ordem
+C) UDP usa mais largura de banda
+D) Não há diferença prática
+Resposta: B
+Explicação: O TCP estabelece ligação, numera segmentos e retransmite o que se perde.
+
+O UDP não faz nada disso: envia e esquece, o que o torna adequado a voz e vídeo,
+onde chegar tarde é pior do que não chegar.
+
+2. Que porta o HTTPS usa por omissão?
+A) 21
+B) 80
+C) 443
+D) 8080
+Resposta: C
+Explicação: O HTTPS atende na porta 443.

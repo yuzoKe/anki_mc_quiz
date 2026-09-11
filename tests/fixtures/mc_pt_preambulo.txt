@@ -1,0 +1,18 @@
+Relatório Personalizado — Questões de Múltipla Escolha
+Fontes: Apostila de Redes de Computadores, Semana 3
+
+1. Qual camada do modelo OSI é responsável pelo roteamento?
+A) Camada de Enlace
+B) Camada de Rede
+C) Camada de Transporte
+D) Camada de Sessão
+Resposta: B
+Explicação: A camada de rede escolhe o caminho dos pacotes entre redes distintas.
+
+2. O que caracteriza o protocolo UDP?
+A) Entrega garantida
+B) Controlo de congestionamento
+C) Ausência de estabelecimento de ligação
+D) Numeração de sequência
+Resposta: C
+Explicação: O UDP é não orientado à ligação e não garante entrega.

@@ -1,0 +1,45 @@
+Introdução
+Um único caractere mal colocado num laço pode fazer um programa correr para sempre. Como raciocinar sobre código antes de o executar?
+Neste relatório você encontra as questões avaliativas adaptadas para múltipla escolha, cobrindo laços, funções e ponteiros.
+Objetivos de Aprendizagem:
+Prever a saída de trechos curtos de código.
+Distinguir passagem por valor de passagem por referência (ponteiros, &, *).
+Atividades Avaliativas - Parte I
+Selecione a alternativa que define corretamente uma função recursiva. A) Uma função que nunca retorna. B) Uma função que chama a si mesma. C) Uma função sem parâmetros. D) Uma função declarada com o símbolo #. E) Uma função que só aceita inteiros. Resposta: B Explicação: Uma função recursiva resolve o problema chamando-se a si mesma com uma entrada menor.
+Considere as seguintes declarações em C:
+int a = 3;
+int *q = &a;
+*q = *q + 4;
+Após a execução, qual o valor de a? A) 3 B) 4 C) 7 D) 12 E) O código não compila. Resposta: C Explicação: O ponteiro q aponta para a, e *q = *q + 4 soma 4 ao próprio a.
+Em um sistema de notas, um aluno quer calcular a média de uma lista. Avalie as afirmativas: I. A média é a soma dividida pela quantidade. II. Uma lista vazia tem média zero por definição. III. A divisão inteira pode truncar o resultado. Está correto o que se afirma em: A) I, apenas. B) II, apenas. C) I e III, apenas. D) II e III, apenas. E) I, II e III. Resposta: C Explicação: A média de uma lista vazia é indefinida, e em C a divisão entre inteiros descarta a parte fracionária.
+Identifique se são verdadeiras (V) ou falsas (F) as afirmativas a seguir: I. Um laço while testa a condição antes de cada iteração. II. Na função:
+int fputs(const char *s, FILE *arq)
+o parâmetro s indica o número de bytes a escrever. III. O comando break encerra o laço mais interno. Assinale a alternativa que apresenta a sequência correta. A) V - F - V. B) V - V - F. C) F - F - V. D) F - V - V. E) V - F - F. Resposta: A Explicação: A afirmativa II é falsa porque s é a cadeia de caracteres a escrever, e não uma contagem de bytes.
+Atividades Avaliativas - Parte II
+Considere o seguinte trecho de código em C:
+#include <stdio.h>
+
+int dobra(int x) {
+    return x * 2;
+}
+
+int main() {
+    int v[] = {1, 2, 3};
+    int *p = v;
+    p = p + 2;
+    printf("%d %d\n", *p, dobra(*(p - 1)));
+    return 0;
+}
+Quais valores são impressos? A) 3 4 B) 2 6 C) 3 6 D) 1 2 E) 3 2 Resposta: A Explicação: p avança duas posições e aponta para 3, e *(p - 1) é 2, cujo dobro é 4.
+Sobre as asserções a seguir: I. Uma lista em Python pode guardar tipos diferentes. PORQUE II. Cada elemento da lista é uma referência para um objeto. A respeito dessas asserções, assinale a opção correta: A) As asserções I e II são verdadeiras, e a II justifica a I. B) As asserções I e II são verdadeiras, mas a II não justifica a I. C) A asserção I é verdadeira, e a II é falsa. D) A asserção I é falsa, e a II é verdadeira. E) As asserções I e II são falsas. Resposta: A Explicação: Como a lista guarda referências, cada posição pode apontar para um objeto de tipo diferente.
+Os operadores & e * são usados com ponteiros. O operador & serve para [Preencher 1] e o operador * para [Preencher 2]. Os termos são corretamente substituídos por: A) 1 obter o endereço; 2 acessar o valor B) 1 multiplicar; 2 somar C) 1 declarar; 2 imprimir D) 1 comparar; 2 copiar E) 1 somar; 2 dividir Resposta: A Explicação: O & devolve o endereço de uma variável e o * acessa o valor guardado nesse endereço.
+Atividades Avaliativas - Parte III
+Em C, na declaração:
+struct Ponto p1, pontos[10], *ptr;
+qual identificador é um ponteiro para struct Ponto? A) p1 B) pontos C) ptr D) Ponto E) [10] Resposta: C Explicação: O asterisco antes de ptr faz dele um apontador para struct Ponto.
+Considere o seguinte trecho de código em C:
+typedef struct {
+    int n;
+    char c;
+} Par;
+Qual a saída de printf("%d %c", x.n, x.c) para Par x = {7, 'B'}? A) 7 B B) 7 A C) 8 B D) B 7 E) 0 B Resposta: A Explicação: Os membros são lidos na ordem declarada, imprimindo 7 B.

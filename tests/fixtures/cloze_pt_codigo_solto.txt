@@ -1,0 +1,20 @@
+Introduction
+Você sabia que compreender laços e ponteiros é o primeiro passo para dominar C? Este material reúne os conceitos essenciais em flashcards.
+Objetivos de Aprendizagem:
+Compreender laços e condições.
+Dominar ponteiros e arrays.
+Flashcards - Laços e Condições
+{{c1::while}} é o laço que testa a condição antes de cada iteração.
+{{c1::break}} é o comando que encerra imediatamente o laço mais interno.
+{{c1::Pós-incremento}} devolve o valor atual da variável e só depois soma um.
+int i = 0;
+while (i < 3) {
+    i++;
+}
+Flashcards - Ponteiros e Arrays
+{{c1::Ponteiro}} é uma variável que guarda o endereço de outra variável.
+{{c1::Aritmética de ponteiros}} avança pelo array somando ao endereço base.
+int arr[] = {1, 2, 3};
+int *p = arr;
+p = p + 2;
+{{c1::Desreferência}} acessa o valor no endereço apontado com o operador asterisco.

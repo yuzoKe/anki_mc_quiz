@@ -1,0 +1,11 @@
+1. O que imprime o excerto abaixo?
+```python
+xs = [1, 2, 3]
+print(sum(xs) / len(xs))
+```
+A) 1.0
+B) 2.0
+C) 3.0
+D) 6.0
+Resposta: B
+Explicação: A soma é 6 e o comprimento é 3, logo a média é 2.0.

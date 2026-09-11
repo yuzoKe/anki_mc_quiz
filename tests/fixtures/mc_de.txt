@@ -1,0 +1,39 @@
+1. Welches Netzwerkprotokoll sorgt für eine verbindungsorientierte und zuverlässige Übertragung von Datenpaketen?
+A) UDP
+B) IP
+C) TCP
+D) ICMP
+Antwort: C
+Erklärung: TCP garantiert im Gegensatz zu UDP die fehlerfreie Übertragung und die korrekte Reihenfolge der Datenpakete durch Bestätigungen.
+
+2. Wie bezeichnet man in einem Betriebssystem die Situation, in der zwei Prozesse gegenseitig auf Ressourcen des jeweils anderen warten und blockieren?
+A) Paging
+B) Deadlock
+C) Spooling
+D) Thrashing
+Antwort: B
+Erklärung: Ein Deadlock (Verklemmung) tritt auf, wenn mehrere Prozesse zyklisch auf Betriebsmittel warten, die von anderen blockiert sind.
+
+3. Welches relationale Datenbankkonzept stellt sicher, dass eine Fremdschlüsselbeziehung auf einen tatsächlich existierenden Datensatz verweist?
+A) Atomizität
+B) Referenzielle Integrität
+C) Redundanz
+D) Normalisierung
+Antwort: B
+Erklärung: Die referenzielle Integrität verhindert ungültige Verknüpfungen, indem abhängige Daten nur auf gültige Primärschlüssel zeigen dürfen.
+
+4. Welches Sortierverfahren arbeitet nach dem Prinzip „Teile und herrsche“ (Divide and Conquer)?
+A) Bubble Sort
+B) Insertion Sort
+C) Selection Sort
+D) Merge Sort
+Antwort: D
+Erklärung: Merge Sort teilt das Eingabearray rekursiv in Teilarrays auf, sortiert diese und führt sie anschließend zusammen.
+
+5. Welcher Speicherbereich wird von Programmen für dynamische Speicherallokationen während der Laufzeit verwendet?
+A) Stack
+B) Heap
+C) Register
+D) ROM
+Antwort: B
+Erklärung: Dynamischer Speicher, der beispielsweise über malloc() oder new angefordert wird, liegt zur Laufzeit auf dem Heap.

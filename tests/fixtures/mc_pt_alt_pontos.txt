@@ -1,0 +1,7 @@
+1. Qual é a unidade básica de informação em computação?
+A. Byte
+B. Bit
+C. Word
+D. Nibble
+Resposta: B
+Explicação: O bit representa um único dígito binário, 0 ou 1.

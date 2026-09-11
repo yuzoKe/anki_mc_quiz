@@ -1,0 +1,17 @@
+1. O que é uma transação ACID numa base de dados?
+A) Um índice composto
+B) Um conjunto de garantias sobre operações
+C) Um tipo de chave estrangeira
+D) Um modo de replicação
+Resposta: B
+Explicação: ACID reúne quatro garantias — Atomicidade, Consistência,
+Isolamento e Durabilidade — que asseguram que uma transação ou é
+aplicada por inteiro ou não deixa qualquer efeito.
+
+2. Qual comando SQL remove uma tabela inteira?
+A) DELETE
+B) TRUNCATE
+C) DROP
+D) REMOVE
+Resposta: C
+Explicação: DROP elimina a tabela e a sua estrutura.

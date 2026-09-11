@@ -1,0 +1,39 @@
+1. Quel protocole de la couche application est principalement utilisé pour transférer des fichiers entre un client et un serveur ?
+A) SSH
+B) FTP
+C) SMTP
+D) SNMP
+Réponse: B
+Explication: Le protocole FTP (File Transfer Protocol) est conçu spécifiquement pour l'échange et la gestion de fichiers sur un réseau TCP/IP.
+
+2. Quel état décrit un processus en attente d'une ressource ou d'un événement d'entrée/sortie avant de pouvoir continuer son exécution ?
+A) Prêt
+B) Bloqué
+C) En cours d'exécution
+D) Terminé
+Réponse: B
+Explication: Un processus passe à l'état bloqué (ou en attente) lorsqu'il ne peut pas être exécuté tant qu'une opération d'E/S n'est pas achevée.
+
+3. Dans le modèle relationnel, quelle clause SQL permet de filtrer les résultats selon une condition spécifique ?
+A) ORDER BY
+B) GROUP BY
+C) WHERE
+D) JOIN
+Réponse: C
+Explication: La clause WHERE filtre les lignes retournées par une requête SQL en fonction des critères logiques spécifiés.
+
+4. Quelle structure de données suit strictement le principe du « dernier entré, premier sorti » (LIFO) ?
+A) File d'attente
+B) Pile
+C) Liste chaînée
+D) Arbre binaire
+Réponse: B
+Explication: Une pile (stack) utilise le principe LIFO : le dernier élément ajouté est le premier à être retiré.
+
+5. Quelle couche du modèle OSI est responsable de l'acheminement des paquets et de l'adressage logique à travers les routeurs ?
+A) Couche liaison de données
+B) Couche réseau
+C) Couche transport
+D) Couche session
+Réponse: B
+Explication: La couche réseau (couche 3) gère le routage des paquets et l'adressage logique tel que l'adressage IP.

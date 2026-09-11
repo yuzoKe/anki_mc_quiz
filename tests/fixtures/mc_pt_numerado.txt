@@ -1,0 +1,23 @@
+1. Qual protocolo traduz nomes de domínio em endereços IP?
+A) TCP
+B) DNS
+C) HTTP
+D) FTP
+Resposta: B
+Explicação: O DNS traduz nomes de domínio legíveis em endereços IP numéricos.
+
+2. Numa árvore binária de busca equilibrada, qual é a complexidade da procura?
+A) O(1)
+B) O(n)
+C) O(log n)
+D) O(n log n)
+Resposta: C
+Explicação: A cada comparação descarta-se metade da árvore.
+
+3. Que estrutura de dados segue a política LIFO?
+A) Fila
+B) Pilha
+C) Lista ligada
+D) Grafo
+Resposta: B
+Explicação: A pilha devolve sempre o elemento inserido mais recentemente.
