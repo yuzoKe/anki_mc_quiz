@@ -1,0 +1,83 @@
+{{c1::Ponteiro}} é uma variável que armazena o endereço de memória de outra variável.
+
+{{c1::*}} é o símbolo utilizado para a declaração de um ponteiro na linguagem C.
+
+{{c1::&}} é o operador utilizado para devolver o endereço de memória de uma variável.
+
+{{c1::*}} é o operador utilizado para acessar o valor armazenado no endereço apontado por um ponteiro.
+
+{{c1::Estrutura (struct)}} é um conjunto de uma ou mais variáveis de diferentes tipos agrupadas sob um único nome para representar uma entidade única.
+
+{{c1::Elementos}} são as variáveis individuais que compõem uma estrutura na linguagem C.
+
+{{c1::typedef}} é a palavra reservada utilizada para definir um novo nome ou sinônimo para um tipo de dado existente, como uma estrutura.
+
+{{c1::4 bytes}} é o tamanho de um ponteiro quando utilizado em uma arquitetura de 32 bits.
+
+{{c1::Aritmética, atribuição e comparação}} são as únicas três operações possíveis de serem realizadas com ponteiros.
+
+{{c1::Adição e subtração}} são as únicas operações permitidas dentro do escopo da aritmética de ponteiros.
+
+{{c1::Paginação}} é a técnica de memória virtual que quebra processos em páginas mapeadas em frames na memória principal para eliminar a fragmentação externa.
+
+{{c1::MMU (Unidade de Gerenciamento de Memória)}} é a unidade de hardware dedicada que auxilia na implementação e gerenciamento da técnica de paginação.
+
+{{c1::Tabela de páginas}} é a estrutura de dados que mapeia os endereços virtuais de um processo para frames correspondentes na memória física.
+
+{{c1::Públicos}} são todos os membros de uma estrutura em C, sendo acessíveis fora dos parâmetros da própria estrutura.
+
+{{c1::ftell}} é a função que devolve o número do byte para o qual o ponteiro de um arquivo está apontando no momento.
+
+{{c1::fseek}} é a função utilizada para realizar saltos em um arquivo, especificando o local de origem para a movimentação.
+
+{{c1::Fora de uma função}} é o local recomendável para a definição de uma estrutura para que ela seja reconhecida por todo o programa.
+
+{{c1::Incremento e decremento}} são operações aritméticas realizadas com ponteiros para percorrer sequências de endereços de memória de forma eficiente.
+
+{{c1::fread e fwrite}} são as funções comumente utilizadas na programação em C para realizar a leitura e escrita de estruturas de dados.
+
+{{c1::20}} é o valor final da variável x após a execução do código de manipulação direta via ponteiro.
+
+int x = 10;
+int *p;
+p = &x;
+*p = 20;
+
+
+{{c1::20 A}} são os valores impressos pelo programa após a cópia de uma estrutura e a modificação de um de seus membros.
+
+#include <stdio.h>
+typedef struct {
+    int x;
+    char y;
+} MyStruct;
+int main() {
+    MyStruct a = {10, 'A'};
+    MyStruct b = a;
+    b.x = b.x * 2;
+    printf("%d %c\n", b.x, b.y);
+    return 0;
+}
+
+
+{{c1::2 3 4 5 6}} são os valores impressos pelo programa após a função utilizar um ponteiro para percorrer e incrementar cada elemento de um array original.
+
+void manipulaArray(int *arr, int tamanho) {
+    int *p = arr;
+    for(int i = 0; i < tamanho; i++) {
+         *p = *p + 1;
+          p++;
+    }
+}
+
+
+{{c1::40 e 30}} são os valores apontados respectivamente por *p e *(p - 1) após o deslocamento do ponteiro em três posições em um array {10, 20, 30, 40, 50}.
+
+int arr[] = {10, 20, 30, 40, 50};
+int *p = arr;
+p = p + 3;
+
+
+{{c1::struct nome_estrutura var}} é a sintaxe correta e responsável por iniciar uma estrutura na linguagem de programação C.
+
+{{c1::Ponteiro para a estrutura}} é o argumento que uma função deve receber para ser capaz de atualizar diretamente os campos de uma estrutura original.

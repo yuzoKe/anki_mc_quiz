@@ -1,0 +1,18 @@
+Flashcards - Estruturas em C
+{{c1::struct}} é a palavra-chave que agrupa membros de tipos diferentes num só tipo.
+{{c1::20 A}} são os valores impressos pelo programa após a cópia de uma estrutura e a modificação de um de seus membros.
+#include <stdio.h>
+
+typedef struct {
+int x;
+
+char y;
+} MyStruct;
+int main() {
+MyStruct a = {10, 'A'};
+MyStruct b = a;
+b.x = b.x * 2;
+printf("%d %c\n", b.x, b.y);
+return 0;
+}
+{{c1::Cópia por valor}} é o que acontece quando uma estrutura é atribuída a outra.

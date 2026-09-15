@@ -361,6 +361,54 @@ class ClozeComCodigoSolto(unittest.TestCase):
             self.assertNotIn("\x00", c)
 
 
+class ClozeComCodigoComLinhasEmBranco(unittest.TestCase):
+    """O código colado sem ``` pode trazer as suas próprias linhas em branco
+    (depois do #include, dentro de um struct). Essas linhas não podem fechar o
+    card nem descartar o resto do trecho — era o que fazia o card só guardar a
+    primeira linha (#include) e perder o corpo todo."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cards = parsers.parse_cloze(fixture("cloze_pt_codigo_com_brancos"))
+
+    def test_um_card_por_marcador(self):
+        self.assertEqual(len(self.cards), 3)
+        self.assertTrue(all("{{c1::" in c for c in self.cards))
+
+    def test_o_bloco_de_codigo_nao_e_truncado_na_primeira_linha_em_branco(self):
+        c = self.cards[1]
+        self.assertTrue(c.startswith("{{c1::20 A}}"))
+        for trecho in ("#include <stdio.h>", "typedef struct {", "int x;",
+                       "char y;", "} MyStruct;", "MyStruct b = a;",
+                       "return 0;"):
+            self.assertIn(trecho, c)
+        self.assertEqual(c.count("```"), 2)
+
+    def test_linhas_em_branco_dentro_do_codigo_sao_preservadas(self):
+        self.assertIn("int x;\n\nchar y;", self.cards[1])
+
+    def test_o_card_seguinte_nao_arrasta_o_bloco(self):
+        self.assertEqual(
+            self.cards[2],
+            "{{c1::Cópia por valor}} é o que acontece quando uma estrutura é "
+            "atribuída a outra.")
+
+    def test_o_card_sem_codigo_nao_ganha_bloco(self):
+        self.assertNotIn("```", self.cards[0])
+
+    def test_titulo_e_marcador_interno_ficam_de_fora(self):
+        junto = "\n".join(self.cards)
+        self.assertNotIn("Flashcards - Estruturas", junto)
+        for c in self.cards:
+            self.assertNotIn("\x00", c)
+
+    def test_bloco_vira_uma_unica_caixa_no_import(self):
+        html = parsers._render_content(self.cards[1])
+        self.assertEqual(html.count("<pre"), 1)
+        self.assertIn("typedef struct", html)
+        self.assertIn("&lt;stdio.h&gt;", html)
+
+
 class ClozeComWidgetDoNotebookLM(unittest.TestCase):
     """O relatório "Interativo" intercala widgets sugeridos (mapa mental, com um
     botão "Adicionar"). Como nenhuma dessas linhas tem `{{c}}` nem é código, o
@@ -386,6 +434,86 @@ class ClozeComWidgetDoNotebookLM(unittest.TestCase):
     def test_cards_depois_do_widget_sao_lidos(self):
         self.assertTrue(self.cards[2].startswith("{{c1::return}}"))
         self.assertTrue(self.cards[3].startswith("{{c1::Recursão}}"))
+
+
+class ClozeRelatorioRealDoNotebookLM(unittest.TestCase):
+    """Saída canónica do NotebookLM para Cloze (cópia real do relatório): 25
+    cards separados por linha em branco, e quatro deles seguidos de um bloco de
+    código colado SEM ``` — sempre com uma linha em branco entre a frase e o
+    código, e mais brancos entre o código e o card seguinte."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cards = parsers.parse_cloze(fixture("cloze_pt_notebooklm_real"))
+
+    def test_todos_os_cards_sao_lidos(self):
+        self.assertEqual(len(self.cards), 25)
+        for i, c in enumerate(self.cards):
+            self.assertRegex(c, r"\{\{c\d+::", "card %d sem marcador" % i)
+            self.assertNotIn("\x00", c)
+
+    def test_o_branco_entre_a_frase_e_o_codigo_nao_descarta_o_bloco(self):
+        c = self.cards[19]
+        self.assertTrue(c.startswith("{{c1::20}} é o valor final"))
+        self.assertIn("```\nint x = 10;\nint *p;\np = &x;\n*p = 20;\n```", c)
+
+    def test_apenas_os_quatro_cards_com_codigo_ganham_bloco(self):
+        com_codigo = [i for i, c in enumerate(self.cards) if "```" in c]
+        self.assertEqual(com_codigo, [19, 20, 21, 22])
+        for i in com_codigo:
+            self.assertEqual(self.cards[i].count("```"), 2)
+
+    def test_a_indentacao_do_codigo_e_preservada(self):
+        self.assertIn("\n    int x;\n    char y;", self.cards[20])
+        self.assertIn("\n    int *p = arr;\n", self.cards[21])
+
+    def test_o_card_seguinte_ao_codigo_fica_limpo(self):
+        # depois de cada bloco há 2 brancos e o card seguinte não herda código
+        self.assertTrue(self.cards[20].startswith("{{c1::20 A}}"))
+        self.assertNotIn("```", self.cards[23])
+        self.assertTrue(self.cards[24].startswith("{{c1::Ponteiro para a estr"))
+
+    def test_cada_bloco_vira_uma_unica_caixa_no_import(self):
+        for i in (19, 20, 21, 22):
+            html = parsers._render_content(self.cards[i])
+            self.assertEqual(html.count("<pre"), 1, "card %d" % i)
+        self.assertIn("&amp;x", parsers._render_content(self.cards[19]))
+
+
+class ClozeFormatosDesalinhados(unittest.TestCase):
+    """Desvios que aparecem quando o texto é colado à mão ou sofre quebra dura:
+    branco antes do código, frase quebrada em duas linhas e `::` com espaços."""
+
+    CODE = ("#include <stdio.h>\ntypedef struct {\nint x;\nchar y;\n"
+            "} MyStruct;\nint main() {\nreturn 0;\n}")
+
+    def test_branco_entre_a_frase_e_o_codigo_nao_orfana_o_bloco(self):
+        cards = parsers.parse_cloze(
+            "{{c1::20 A}} são os valores impressos.\n\n" + self.CODE)
+        self.assertEqual(len(cards), 1)
+        self.assertIn("#include <stdio.h>", cards[0])
+        self.assertEqual(cards[0].count("```"), 2)
+
+    def test_frase_quebrada_em_duas_linhas_volta_a_juntar_se(self):
+        cards = parsers.parse_cloze(
+            "{{c1::20 A}} são os valores impressos de um de seus\nmembros.\n"
+            + self.CODE)
+        self.assertEqual(len(cards), 1)
+        self.assertTrue(cards[0].startswith(
+            "{{c1::20 A}} são os valores impressos de um de seus membros."))
+        self.assertIn("#include <stdio.h>", cards[0])
+
+    def test_marcador_com_espacos_e_normalizado(self):
+        cards = parsers.parse_cloze("{{c1 :: 20 A}} é a resposta.")
+        self.assertEqual(cards, ["{{c1::20 A}} é a resposta."])
+
+    def test_titulo_colado_a_um_card_terminado_nao_e_absorvido(self):
+        # frase terminada em ponto + título logo abaixo: o título fica de fora
+        cards = parsers.parse_cloze(
+            "{{c1::HTTP}} é um protocolo.\nFlashcards - Redes\n"
+            "{{c1::DNS}} traduz nomes.")
+        self.assertEqual(cards, ["{{c1::HTTP}} é um protocolo.",
+                                 "{{c1::DNS}} traduz nomes."])
 
 
 class Helpers(unittest.TestCase):
