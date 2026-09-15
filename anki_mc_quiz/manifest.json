@@ -3,7 +3,7 @@
     "package": "anki_mc_quiz",
     "ankiweb_id": "1875934296",
     "author": "Eduardo Kubota",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "homepage": "https://github.com/yuzoKe/anki_mc_quiz",
     "tags": ["study", "quiz", "multiple choice"],
     "conflicts": [],
