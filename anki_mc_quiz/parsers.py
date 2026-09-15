@@ -565,22 +565,71 @@ def parse_questions(text: str) -> list:
     return parse_questions_report(text)[0]
 
 
-def _parse_cloze_chunk(lines: list) -> list:
-    """Um bloco (separado por linha em branco) sem ``` : uma linha `{{c}}` por
-    card, e o código que o NotebookLM cola SEM ``` a seguir a um card vai para
-    dentro desse card, entre ```. Um `{{c}}` novo ou uma linha de prosa/título
-    fecha o card em curso — assim títulos de secção e preâmbulo não entram.
+_CLOZE_MARKER_FIX_RE = re.compile(r"\{\{[ \t]*(c\d+)[ \t]*::[ \t]*")
+
+
+def _normalize_cloze_markers(text: str) -> str:
+    """`{{c1 :: x}}` → `{{c1::x}}`. O Anki só reconhece a lacuna com o `::`
+    colado ao `cN` (sem espaço antes); com espaço, a nota entrava sem cloze."""
+    return _CLOZE_MARKER_FIX_RE.sub(r"{{\1::", text)
+
+
+def _cloze_bridges_code(lines: list, i: int) -> bool:
+    """A próxima linha não vazia ainda é código (e não um card novo)?
+
+    Cobre os dois brancos que aparecem no relatório do NotebookLM: o que separa
+    o `{{c}}` do bloco de código colado logo a seguir, e os que o próprio código
+    traz (depois do `#include`, dentro de um struct). Um `{{c}}` novo ou uma
+    linha de prosa/título não são código — aí o branco fecha o card à mesma.
+    """
+    below = next((lines[k] for k in range(i + 1, len(lines))
+                  if lines[k].strip()), "")
+    return "{{c" not in below and _looks_like_code(below)
+
+
+def _is_cloze_continuation(current: str) -> bool:
+    """A frase do card atual foi cortada a meio e a próxima linha continua-a?
+
+    Só quando o card ainda não terminou em pontuação final e ainda não começou
+    código. É o que reconstitui `...de um de seus` + `membros.` sem arrastar um
+    título — títulos vêm depois de um card que já fechou (ponto final) ou de uma
+    linha em branco, e a linha em branco fecha o card por `_cloze_bridges_code`.
+    """
+    return not current.rstrip().endswith((".", "!", "?", ":", ";"))
+
+
+def _parse_cloze_lines(lines: list) -> list:
+    """Uma frase `{{c}}` por card, robusto ao relatório real do NotebookLM:
+
+    - o código colado SEM ``` a seguir a um card vai para dentro dele, entre ```,
+      mesmo separado por uma linha em branco e mesmo que o código traga os seus
+      próprios brancos (`_cloze_bridges_code`);
+    - uma frase de card quebrada em várias linhas volta a juntar-se
+      (`_is_cloze_continuation`);
+    - um `{{c}}` novo, ou prosa/título, fecham o card — assim títulos e preâmbulo
+      não entram;
+    - um bloco ```...``` já protegido chega como placeholder de 1 linha:
+      restaura-se sozinho como fence, por isso entra no card sem ``` extra.
     """
     cards, current, code = [], None, []
 
-    def flush():
+    def close_code():
+        """Solda o código solto pendente ao card em curso, entre ```."""
         nonlocal current, code
-        if current is not None:
-            cards.append(current + "\n```\n" + "\n".join(code) + "\n```"
-                         if code else current)
-        current, code = None, []
+        while code and not code[-1].strip():
+            code.pop()
+        if code:
+            current += "\n```\n" + "\n".join(code) + "\n```"
+        code = []
 
-    for line in lines:
+    def flush():
+        nonlocal current
+        close_code()
+        if current is not None:
+            cards.append(current)
+        current = None
+
+    for i, line in enumerate(lines):
         stripped = line.strip()
         if "{{c" in stripped:
             flush()
@@ -589,8 +638,22 @@ def _parse_cloze_chunk(lines: list) -> list:
                 cards.extend(p.strip() for p in parts[:-1] if "{{c" in p)
                 stripped = parts[-1].strip()
             current = stripped
-        elif current is not None and _is_code_body(line):
+        elif current is None:
+            continue                       # preâmbulo/título antes do 1.º card
+        elif _PLACEHOLDER_RE.search(stripped):
+            close_code()
+            current += "\n" + stripped     # ``` já protegido: entra tal e qual
+        elif _is_code_body(line):
             code.append(line.rstrip())
+        elif not stripped:
+            if _cloze_bridges_code(lines, i):
+                if code:
+                    code.append("")        # branco no meio do código: não fecha
+                # branco antes do código: não fecha nem abre com linha vazia
+            else:
+                flush()
+        elif not code and _is_cloze_continuation(current):
+            current += " " + stripped      # cauda de frase quebrada em 2 linhas
         else:
             flush()
     flush()
@@ -600,26 +663,20 @@ def _parse_cloze_chunk(lines: list) -> list:
 def parse_cloze(text: str) -> list:
     """Returns individual cloze sentences containing at least one {{cN::}} marker.
 
-    Handles three layouts:
+    Handles these layouts:
     - One card per line (standard NotebookLM output)
     - Multiple sentences concatenated in a paragraph (split on '. {{c' boundaries)
-    - A card followed by loose (unfenced) code lines, which get attached to it
+    - A card followed by loose (unfenced) code lines, which get attached to it —
+      even when a blank line sits between them and even when the code carries its
+      own blank lines (#include then a struct)
+    - A card whose sentence is hard-wrapped across two lines
+    - A card followed by a fenced ```...``` block
+    - Markers written with spaces (``{{c1 :: x}}``), normalized to ``{{c1::x}}``
     """
     # Shield fenced code blocks so a multi-line block stays on one logical card.
     text, blocks = _protect_code_blocks(text)
-
-    results = []
-    # NotebookLM separates cards with a blank line, so process blank-line
-    # separated chunks. A chunk that already carries a fenced ```...``` block is
-    # kept whole (the fence lives on its own line and has no {{c marker); every
-    # other chunk goes through _parse_cloze_chunk.
-    for chunk in re.split(r"\n[ \t]*\n", text):
-        if "{{c" not in chunk:
-            continue
-        if "\x00CB" in chunk:
-            results.append(chunk.strip())
-            continue
-        results.extend(_parse_cloze_chunk(chunk.splitlines()))
+    text = _normalize_cloze_markers(text)
+    results = _parse_cloze_lines(text.split("\n"))
     return [_restore_code_blocks(r, blocks) for r in results]
 
 
